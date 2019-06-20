@@ -338,11 +338,23 @@ pub fn lift_digest(digest: &Value) -> Result<hashing::Digest, String> {
   ))
 }
 
+//#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+//pub struct ExecuteProcess(process_execution::ExecuteProcessRequest);
+
 ///
 /// A Node that represents executing a process.
 ///
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-pub struct ExecuteProcess(process_execution::ExecuteProcessRequest);
+pub struct ExecuteProcess {
+  argv: Vec<String>,
+  env: BTreeMap<String, String>,
+  input_files: hashing::Digest,
+  output_files: BTreeSet<PathBuf>,
+  output_directories: BTreeSet<PathBuf>,
+  timeout: std::time::Duration,
+  //pub description: String,
+  jdk_home: Option<PathBuf>,
+}
 
 impl ExecuteProcess {
   ///
@@ -382,8 +394,6 @@ impl ExecuteProcess {
       return Err(format!("Timeout was negative: {:?}", timeout_in_seconds));
     }
 
-    let description = externs::project_str(&value, "description");
-
     let jdk_home = {
       let val = externs::project_str(&value, "jdk_home");
       if val.is_empty() {
@@ -393,16 +403,15 @@ impl ExecuteProcess {
       }
     };
 
-    Ok(ExecuteProcess(process_execution::ExecuteProcessRequest {
+    Ok(ExecuteProcess{
       argv: externs::project_multi_strs(&value, "argv"),
       env: env,
       input_files: digest,
       output_files: output_files,
       output_directories: output_directories,
       timeout: Duration::from_millis((timeout_in_seconds * 1000.0) as u64),
-      description: description,
       jdk_home: jdk_home,
-    }))
+    })
   }
 }
 
