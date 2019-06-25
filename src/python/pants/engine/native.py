@@ -569,6 +569,9 @@ class ExternContext:
 class Native(Singleton):
   """Encapsulates fetching a platform specific version of the native portion of the engine."""
 
+  def __init__(self, build_configuration=None):
+    self.build_configuration = build_configuration
+
   _errors_during_execution = None
 
   class CFFIExternMethodRuntimeErrorInfo(datatype([
