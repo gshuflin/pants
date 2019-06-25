@@ -24,6 +24,13 @@ pub fn get_type_for(val: &Value) -> TypeId {
   with_externs(|e| (e.get_type_for)(e.context, val as &Handle))
 }
 
+pub fn get_union_for(ty: TypeId) -> Option<TypeId> {
+  with_externs(|e| match (e.get_union_for)(e.context, ty) {
+    OptionalTypeId::NoTypeId => None,
+    OptionalTypeId::SomeTypeId(type_id) => Some(type_id),
+  })
+}
+
 pub fn identify(val: &Value) -> Ident {
   with_externs(|e| (e.identify)(e.context, val as &Handle))
 }
@@ -214,11 +221,12 @@ pub fn generator_send(generator: &Value, arg: &Value) -> Result<GeneratorRespons
   match response {
     PyGeneratorResponse::Broke(h) => Ok(GeneratorResponse::Break(Value::new(h))),
     PyGeneratorResponse::Throw(h) => Err(PyResult::failure_from(Value::new(h))),
-    PyGeneratorResponse::Get(product, handle, ident) => {
+    PyGeneratorResponse::Get(product, handle, ident, declared_subject) => {
       let mut interns = INTERNS.write();
       let g = Get {
         product,
         subject: interns.insert_with(Value::new(handle), ident),
+        declared_subject: Some(declared_subject),
       };
       Ok(GeneratorResponse::Get(g))
     }
@@ -235,6 +243,7 @@ pub fn generator_send(generator: &Value, arg: &Value) -> Result<GeneratorRespons
         .map(|((p, v), i)| Get {
           product: p,
           subject: interns.insert_with(v, i),
+          declared_subject: None,
         })
         .collect();
       Ok(GeneratorResponse::GetMulti(gets))
@@ -317,6 +326,7 @@ pub struct Externs {
   pub call: CallExtern,
   pub generator_send: GeneratorSendExtern,
   pub get_type_for: GetTypeForExtern,
+  pub get_union_for: GetUnionForExtern,
   pub identify: IdentifyExtern,
   pub equals: EqualsExtern,
   pub clone_val: CloneValExtern,
@@ -341,6 +351,8 @@ unsafe impl Sync for Externs {}
 unsafe impl Send for Externs {}
 
 pub type GetTypeForExtern = extern "C" fn(*const ExternContext, *const Handle) -> TypeId;
+
+pub type GetUnionForExtern = extern "C" fn(*const ExternContext, TypeId) -> OptionalTypeId;
 
 pub type IdentifyExtern = extern "C" fn(*const ExternContext, *const Handle) -> Ident;
 
@@ -433,6 +445,14 @@ impl From<Result<(), String>> for PyResult {
   }
 }
 
+///This is basically an Option<TypeId>, but manually-monomorphized
+///to make it work more smoothly with the Python FFI
+#[repr(C)]
+pub enum OptionalTypeId {
+  NoTypeId,
+  SomeTypeId(TypeId),
+}
+
 ///
 /// The response from a call to extern_generator_send. Gets include Idents for their Handles
 /// in order to avoid roundtripping to intern them, and to eagerly trigger errors for unhashable
@@ -440,7 +460,7 @@ impl From<Result<(), String>> for PyResult {
 ///
 #[repr(C)]
 pub enum PyGeneratorResponse {
-  Get(TypeId, Handle, Ident),
+  Get(TypeId, Handle, Ident, TypeId),
   GetMulti(TypeIdBuffer, HandleBuffer, IdentBuffer),
   // NB: Broke not Break because C keyword.
   Broke(Handle),
@@ -451,6 +471,7 @@ pub enum PyGeneratorResponse {
 pub struct Get {
   pub product: TypeId,
   pub subject: Key,
+  pub declared_subject: Option<TypeId>,
 }
 
 impl fmt::Display for Get {
