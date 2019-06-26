@@ -286,7 +286,7 @@ class _FFISpecification(object):
     type_id = c.to_id(type(obj))
     return TypeId(type_id)
 
-  @_extern_decl('OptionalTypeId', ['ExternContext*', 'TypeId'])
+  @_extern_decl('TypeId', ['ExternContext*', 'TypeId'])
   def extern_get_union_for(self, context_handle, type_id):
     """Return an optional union if the type belongs to one"""
 
@@ -296,10 +296,7 @@ class _FFISpecification(object):
     build_configuration = self.build_configuration
     print("BUILD: {}".format(build_configuration))
 
-    response = self._ffi.new('OptionalTypeId*')
-    response.tag = self._lib.NoTypeId
-    response.no_type_id = ()
-    return response[0]
+    return TypeId(0)
 
   @_extern_decl('Ident', ['ExternContext*', 'Handle*'])
   def extern_identify(self, context_handle, val):

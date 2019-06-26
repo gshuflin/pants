@@ -25,9 +25,12 @@ pub fn get_type_for(val: &Value) -> TypeId {
 }
 
 pub fn get_union_for(ty: TypeId) -> Option<TypeId> {
-  with_externs(|e| match (e.get_union_for)(e.context, ty) {
-    OptionalTypeId::NoTypeId => None,
-    OptionalTypeId::SomeTypeId(type_id) => Some(type_id),
+  with_externs(|e| {
+    let type_id = (e.get_union_for)(e.context, ty);
+    match type_id {
+      TypeId(id) if id == 0 => None,
+      anything_else => Some(anything_else)
+    }
   })
 }
 
@@ -352,7 +355,7 @@ unsafe impl Send for Externs {}
 
 pub type GetTypeForExtern = extern "C" fn(*const ExternContext, *const Handle) -> TypeId;
 
-pub type GetUnionForExtern = extern "C" fn(*const ExternContext, TypeId) -> OptionalTypeId;
+pub type GetUnionForExtern = extern "C" fn(*const ExternContext, TypeId) -> TypeId;
 
 pub type IdentifyExtern = extern "C" fn(*const ExternContext, *const Handle) -> Ident;
 
@@ -445,6 +448,7 @@ impl From<Result<(), String>> for PyResult {
   }
 }
 
+/*
 ///This is basically an Option<TypeId>, but manually-monomorphized
 ///to make it work more smoothly with the Python FFI
 #[repr(C)]
@@ -452,6 +456,7 @@ pub enum OptionalTypeId {
   NoTypeId,
   SomeTypeId(TypeId),
 }
+*/
 
 ///
 /// The response from a call to extern_generator_send. Gets include Idents for their Handles
