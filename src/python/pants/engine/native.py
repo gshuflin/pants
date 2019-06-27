@@ -294,8 +294,11 @@ class _FFISpecification(object):
     c = self._ffi.from_handle(context_handle)
     input_type = c.from_id(type_id.tup_0)
 
-    build_configuration = self._build_configuration
-    print("BUILD: {}".format(type(build_configuration)))
+    union_rules = self._build_configuration.union_rules
+    print("UNION RULES: ", union_rules)
+    for item in union_rules:
+        print("ITEM: ", item)
+        print("RULE: ", union_rules[item])
 
     return TypeId(0)
 
