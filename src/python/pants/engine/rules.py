@@ -305,11 +305,12 @@ def union(cls):
   })
 
 
-class UnionRule(datatype([
-    ('union_base', _type_field),
-    ('union_member', _type_field),
-])):
+@dataclass
+class UnionRule():
   """Specify that an instance of `union_member` can be substituted wherever `union_base` is used."""
+
+  union_base: _type_field
+  union_member: _type_field
 
   def __new__(cls, union_base, union_member):
     if not getattr(union_base, '_is_union', False):
