@@ -254,6 +254,22 @@ impl WrappedNode for Select {
             .to_boxed()
         }
         &Rule::Intrinsic(Intrinsic { product, input })
+          if product == types.directory_digest && input == types.files_content =>
+        {
+          let context = context.clone();
+
+          self.select_product(&context, types.files_content, "intrinsic")
+            .and_then(move |_files_content: Value| {
+              let dummy_bytes = bytes::Bytes::from(&b"hella yo"[..]);
+              let digest = context.core.store().store_file_bytes(dummy_bytes, false)
+                .map_err(|e| throw(&e));
+              digest.map(move |digest: hashing::Digest| {
+                Snapshot::store_directory(&context.core, &digest)
+              })
+            })
+          .to_boxed()
+        },
+        &Rule::Intrinsic(Intrinsic { product, input })
           if product == types.files_content && input == types.directory_digest =>
         {
           let context = context.clone();

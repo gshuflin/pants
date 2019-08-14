@@ -71,7 +71,7 @@ class CountLinesOfCode(ConsoleTask):
     req = ExecuteProcessRequest(
       argv=cmd,
       input_files=directory_digest,
-      output_files=('ignored', 'report'),
+      output_files=(),
       description='cloc',
     )
     exec_result = self.context.execute_process_synchronously_or_raise(req, 'cloc', (WorkUnitLabel.TOOL,))
