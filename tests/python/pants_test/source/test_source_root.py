@@ -28,6 +28,8 @@ class SourceRootTest(TestBase):
     trie.add_pattern('src/*')
     self.assertEqual(root('src/java', ('java',)),
                       trie.find('src/java/org/pantsbuild/foo/Foo.java'))
+    self.assertEqual(root('src/java', ('java',)),
+                      trie.find('src/java/org/pantsbuild/foo/hella/GNOSIS.java'))
     self.assertEqual(root('my/project/src/java', ('java',)),
                       trie.find('my/project/src/java/org/pantsbuild/foo/Foo.java'))
     self.assertEqual(root('src/python', ('python',)),
@@ -90,6 +92,28 @@ class SourceRootTest(TestBase):
     trie.add_fixed('src/go/src', ('go',))
     self.assertEqual(root('src/go/src', ('go',)),
                       trie.find('src/go/src/foo/bar/baz.go'))
+
+  def test_source_root_trie_traverse(self):
+    def make_trie() -> SourceRootTrie:
+      return SourceRootTrie(SourceRootFactory({
+      'jvm': ('java', 'scala'),
+      'py': ('python',)
+    }))
+
+    trie = make_trie()
+    self.assertEqual(set(), trie.traverse())
+
+    trie.add_pattern('src/*')
+    trie.add_pattern('src/main/*')
+    self.assertEqual({'src/*', 'src/main/*'}, trie.traverse())
+
+    trie = make_trie()
+    trie.add_pattern('*')
+    trie.add_pattern('src/*/code')
+    trie.add_pattern('src/main/*/code')
+    trie.add_pattern('src/main/*')
+    trie.add_pattern('src/main/*/foo')
+    self.assertEqual({'*', 'src/*/code', 'src/main/*/code', 'src/main/*', 'src/main/*', 'src/main/*/foo'}, trie.traverse())
 
   def test_fixed_source_root_at_buildroot(self):
     trie = SourceRootTrie(SourceRootFactory({}))
