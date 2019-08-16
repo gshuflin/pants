@@ -6,8 +6,10 @@ from collections import namedtuple
 from typing import NamedTuple, Sequence, Set, Tuple
 
 from pants.base.project_tree_factory import get_project_tree
+from pants.engine.objects import Collection
 from pants.subsystem.subsystem import Subsystem
 from pants.util.memo import memoized_method, memoized_property
+from pants.util.objects import datatype
 
 
 class SourceRootCategories:
@@ -18,15 +20,15 @@ class SourceRootCategories:
   ALL = [UNKNOWN, SOURCE, TEST, THIRDPARTY]
 
 
-SourceRoot = namedtuple('_SourceRoot', ['path', 'langs', 'category'])
+class SourceRoot(datatype([('path', str), 'langs', ('category', str)], superclass_name='_SourceRoot')):
+  pass
 
+SourceRoots = Collection.of(SourceRoot)
 
-class UncanonicalizedSourceRoot(NamedTuple):
+class UncanonicalizedSourceRoot(datatype([('path', str), 'langs', ('category', str)])):
   """Named tuple of path/langs/category, where the langs are deliberately not canonicalized in order to match up
      with the actual directory names on disk"""
-  path: str
-  langs: Tuple[str,...]
-  category: SourceRootCategories
+  pass
 
 
 class SourceRootFactory:
@@ -102,6 +104,11 @@ class SourceRoots:
       # TODO: Remove this logic. It should be an error to have no matching source root.
       return SourceRoot(path, [], SourceRootCategories.UNKNOWN)
 
+
+  def traverse(self) -> Set[UncanonicalizedSourceRoot]:
+    return self._trie.traverse()
+
+  #TODO delete this
   def all_roots(self):
     """Return all known source roots.
 
@@ -111,6 +118,7 @@ class SourceRoots:
     However we don't descend into source roots, once found, so this should be fast in practice.
     Note: Does not follow symlinks.
     """
+
     project_tree = get_project_tree(self._options)
 
     fixed_roots = set()

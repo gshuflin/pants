@@ -5,6 +5,7 @@ import json
 
 from pants.rules.core import list_roots
 from pants_test.console_rule_test_base import ConsoleRuleTestBase
+from pants.rules.core.list_roots import compute_glob_text
 
 
 class RootsTest(ConsoleRuleTestBase):
@@ -38,3 +39,15 @@ class RootsTest(ConsoleRuleTestBase):
     self.assert_console_output('fakerootA: lang1', 'fakerootB: lang2',
       args=[f"--source-source-roots={source_roots}"]
     )
+
+  def test_compute_glob_text(self):
+    self.assertEqual({'a/python/b', 'a/javascript/b'},
+    compute_glob_text('a/*/b', ['python', 'javascript']))
+
+    print(compute_glob_text('a/*/b/*', ['python', 'javascript']))
+    self.assertEqual({
+      'python/b/python', 'python/b/javascript',
+      'javascript/b/python', 'javascript/b/javascript'},
+    compute_glob_text('*/b/*', ['python', 'javascript']))
+
+
