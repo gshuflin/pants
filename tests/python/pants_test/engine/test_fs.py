@@ -48,11 +48,16 @@ class FSTest(TestBase, SchedulerTestBase, metaclass=ABCMeta):
     self.assert_walk_snapshot('files', filespecs_or_globs, paths, **kwargs)
 
   def assert_walk_snapshot(self, field, filespecs_or_globs, paths, ignore_patterns=None, prepare=None):
+    print(f"TYPES: {type(filespecs_or_globs[0])}")
+    print(f"Field: {field} specs: {filespecs_or_globs}, paths: {paths}")
     with self.mk_project_tree(ignore_patterns=ignore_patterns) as project_tree:
       scheduler = self.mk_scheduler(rules=create_fs_rules(), project_tree=project_tree)
       if prepare:
         prepare(project_tree)
-      result = self.execute(scheduler, Snapshot, self.specs(filespecs_or_globs))[0]
+      specs = self.specs(filespecs_or_globs)
+      print(f"What are le specs: {specs}")
+      result = self.execute(scheduler, Snapshot, specs)[0]
+      print(f"Result is: {result}")
       self.assertEqual(sorted(getattr(result, field)), sorted(paths))
 
   def assert_content(self, filespecs_or_globs, expected_content):
@@ -73,7 +78,7 @@ class FSTest(TestBase, SchedulerTestBase, metaclass=ABCMeta):
 
   def test_walk_literal(self):
     self.assert_walk_files(['4.txt'], ['4.txt'])
-    self.assert_walk_files(['a/b/1.txt', 'a/b/2'], ['a/b/1.txt', 'a/b/2'])
+    self.assert_walk_files(['a/b/1.txt', 'a/b/2'], ['a/b/1.txt', 'a/b/2', 'nolo'])
     self.assert_walk_files(['c.ln/2'], ['c.ln/2'])
     self.assert_walk_files(['d.ln/b/1.txt'], ['d.ln/b/1.txt'])
     self.assert_walk_files(['a/3.txt'], ['a/3.txt'])

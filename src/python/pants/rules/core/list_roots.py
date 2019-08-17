@@ -35,6 +35,8 @@ class Roots(LineOriented, Goal):
 def all_roots(source_root_config):
   uncanonicalized_source_roots = source_root_config.get_source_roots().traverse()
 
+  print(f"Uncanonicalized source roots: {len(uncanonicalized_source_roots)}")
+
   all_paths: Set[str] = set()
   for item in uncanonicalized_source_roots:
     path = item.path
@@ -45,16 +47,23 @@ def all_roots(source_root_config):
 
     all_paths |= glob_texts
 
-  path_globs = [PathGlobs(glob_text) for glob_text in all_paths]
+  all_paths_list = [x for x in all_paths]
+  path_globs = [PathGlobs(include=(f'{glob_text}/**',)) for glob_text in all_paths_list]
   snapshots = yield [Get(Snapshot, PathGlobs, glob) for glob in path_globs]
-  print(f"Snapshots should be a generator object: {snapshots}")
+  for snapshot in snapshots:
+    if len(snapshot.dirs) > 0:
+      pass
+
+    print(f"Snapshot:: dirs: {snapshot.dirs}, files: {snapshot.files} ")
+
   yield []
 
 
 @console_rule(Roots, [Console, Roots.Options, SourceRootConfig])
 def list_roots(console, options, source_root_config):
-  all_roots = source_root_config.get_source_roots().all_roots()
-  #all_roots = yield Get(SourceRoots, SourceRootConfig, source_root_config)
+  #all_roots = source_root_config.get_source_roots().all_roots()
+  #print(f"ALL ROOTS LEN: {len(list(all_roots))}")
+  all_roots = yield Get(SourceRoots, SourceRootConfig, source_root_config)
 
   print(f"What does all_roots look like? {all_roots}")
   with Roots.line_oriented(options, console) as (print_stdout, print_stderr):
