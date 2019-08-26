@@ -13,9 +13,9 @@ from types import GeneratorType
 from pants.base.exiter import PANTS_FAILED_EXIT_CODE
 from pants.base.project_tree import Dir, File, Link
 from pants.build_graph.address import Address
-from pants.engine.fs import (Digest, DirectoriesToMerge, DirectoryToMaterialize,
+from pants.engine.fs import (BinaryFileData, Digest, DirectoriesToMerge, DirectoryToMaterialize,
                              DirectoryWithPrefixToStrip, FileContent, FilesContent, PathGlobs,
-                             PathGlobsAndRoot, Snapshot, UrlToFetch)
+                             PathGlobsAndRoot, SingleFileSnapshot, Snapshot, UrlToFetch)
 from pants.engine.isolated_process import ExecuteProcessRequest, FallibleExecuteProcessResult
 from pants.engine.native import Function, TypeId
 from pants.engine.nodes import Return, Throw
@@ -95,6 +95,7 @@ class Scheduler:
       execution_options=execution_options,
       construct_directory_digest=Digest,
       construct_snapshot=Snapshot,
+      construct_single_file_snapshot=SingleFileSnapshot,
       construct_file_content=FileContent,
       construct_files_content=FilesContent,
       construct_process_result=FallibleExecuteProcessResult,
@@ -102,6 +103,8 @@ class Scheduler:
       type_path_globs=PathGlobs,
       type_directory_digest=Digest,
       type_snapshot=Snapshot,
+      type_single_file_snapshot=SingleFileSnapshot,
+      type_binary_file_data=BinaryFileData,
       type_merge_snapshots_request=DirectoriesToMerge,
       type_directory_with_prefix_to_strip=DirectoryWithPrefixToStrip,
       type_files_content=FilesContent,

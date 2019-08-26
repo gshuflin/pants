@@ -139,6 +139,16 @@ class Snapshot(datatype([('directory_digest', Digest), ('files', tuple), ('dirs'
     return self == EMPTY_SNAPSHOT
 
 
+class SingleFileSnapshot(datatype([('digest', Digest), ('file_name', str)])):
+  """A single-file snapshot is the Snapshot abstraction over just a single
+  file, including a filename (which will be auto-created with a random value if
+  not specified here)."""
+
+
+class BinaryFileData(datatype([('data', bytes)])):
+  """BinaryFileData is a "newtype" wrapper around standard Python bytes."""
+
+
 class DirectoriesToMerge(datatype([('directories', tuple)])):
   pass
 

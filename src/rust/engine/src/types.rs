@@ -3,6 +3,7 @@ use crate::core::{Function, TypeId};
 pub struct Types {
   pub construct_directory_digest: Function,
   pub construct_snapshot: Function,
+  pub construct_single_file_snapshot: Function,
   pub construct_file_content: Function,
   pub construct_files_content: Function,
   pub construct_process_result: Function,
@@ -10,6 +11,8 @@ pub struct Types {
   pub path_globs: TypeId,
   pub directory_digest: TypeId,
   pub snapshot: TypeId,
+  pub single_file_snapshot: TypeId,
+  pub binary_file_data: TypeId,
   pub directories_to_merge: TypeId,
   pub directory_with_prefix_to_strip: TypeId,
   pub files_content: TypeId,
