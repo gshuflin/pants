@@ -167,6 +167,11 @@ impl WrappedNode for Select {
           task: task.clone(),
           entry: Arc::new(self.entry.clone()),
         }),
+        &Rule::Intrinsic(Intrinsic { product, input})
+          if product == types.single_file_snapshot && input == types.binary_file_data =>
+        {
+          unimplemented!()
+        },
         &Rule::Intrinsic(Intrinsic { product, input })
           if product == types.snapshot && input == types.path_globs =>
         {
