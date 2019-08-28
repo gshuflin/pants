@@ -167,6 +167,22 @@ impl WrappedNode for Select {
           task: task.clone(),
           entry: Arc::new(self.entry.clone()),
         }),
+	&Rule::Intrinsic(Intrinsic { product, input })
+	  if product == types.directory_digest && input == types.files_content =>
+	{
+	  let context = context.clone();
+
+	  self.select_product(&context, types.files_content, "intrinsic")
+	    .and_then(move |_files_content: Value| {
+	      let dummy_bytes = bytes::Bytes::from(&b"Test dummy bytes"[..]);
+	      let digest = context.core.store().store_file_bytes(dummy_bytes, false)
+		.map_err(|e| throw(&e));
+	      digest.map(move |digest: hashing::Digest| {
+		Snapshot::store_directory(&context.core, &digest)
+	      })
+	    })
+	  .to_boxed()
+	},
         &Rule::Intrinsic(Intrinsic { product, input })
           if product == types.snapshot && input == types.path_globs =>
         {
