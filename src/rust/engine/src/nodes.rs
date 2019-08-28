@@ -168,10 +168,11 @@ impl WrappedNode for Select {
           entry: Arc::new(self.entry.clone()),
         }),
 	&Rule::Intrinsic(Intrinsic { product, input })
-	  if product == types.directory_digest && input == types.files_content =>
+	  if product == types.directory_digest && input == types.input_file_content =>
 	{
 	  let context = context.clone();
 
+          println!("IN THE INTRINSIC!");
 	  self.select_product(&context, types.files_content, "intrinsic")
 	    .and_then(move |_files_content: Value| {
 	      let dummy_bytes = bytes::Bytes::from(&b"Test dummy bytes"[..]);
