@@ -4,7 +4,7 @@
 from typing import Set
 
 from pants.engine.console import Console
-from pants.engine.fs import PathGlobs, Snapshot
+from pants.engine.fs import PathGlobs, Snapshot, InputFilesContent, FileContent, Digest
 from pants.engine.goal import Goal, LineOriented
 from pants.engine.rules import console_rule, optionable_rule, rule
 from pants.engine.selectors import Get
@@ -14,6 +14,7 @@ from pants.source.source_root import AllSourceRoots, SourceRoot, SourceRootConfi
 class Roots(LineOriented, Goal):
   """List the repo's registered source roots."""
   name = 'roots'
+
 
 
 @rule(AllSourceRoots, [SourceRootConfig])
@@ -46,10 +47,15 @@ def all_roots(source_root_config):
 
 @console_rule(Roots, [Console, Roots.Options, AllSourceRoots])
 def list_roots(console, options, all_roots):
-  with Roots.line_oriented(options, console) as (print_stdout, print_stderr):
-    for src_root in sorted(all_roots, key=lambda x: x.path):
-      all_langs = ','.join(sorted(src_root.langs))
-      print_stdout(f"{src_root.path}: {all_langs or '*'}")
+
+  input_file = InputFilesContent((FileContent(path='hella', content=b'noooooooooo'),))
+  digest = yield Get(Digest, InputFilesContent, input_file)
+
+  print("NOOOO")
+  #with Roots.line_oriented(options, console) as (print_stdout, print_stderr):
+  #  for src_root in sorted(all_roots, key=lambda x: x.path):
+  #    all_langs = ','.join(sorted(src_root.langs))
+  #    print_stdout(f"{src_root.path}: {all_langs or '*'}")
   yield Roots(exit_code=0)
 
 

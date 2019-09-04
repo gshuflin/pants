@@ -5,7 +5,7 @@ import os
 import unittest
 
 from pants.engine.fs import (EMPTY_DIRECTORY_DIGEST, Digest, FileContent, FilesContent,
-                             InputFileContent, PathGlobs, Snapshot)
+                             InputFilesContent, PathGlobs, Snapshot)
 from pants.engine.isolated_process import (ExecuteProcessRequest, ExecuteProcessResult,
                                            FallibleExecuteProcessResult, ProcessExecutionFailure)
 from pants.engine.rules import RootRule, rule
@@ -258,7 +258,7 @@ class TestInputFileCreation(TestBase):
     file_name = 'some.filename'
     file_contents = b'some file contents'
 
-    input_file = InputFileContent(path=file_name, content=file_contents)
+    input_file = InputFilesContent((FileContent(path=file_name, content=file_contents),))
     digest, = self.scheduler.product_request(Digest, [input_file])
 
     req = ExecuteProcessRequest(
@@ -274,7 +274,7 @@ class TestInputFileCreation(TestBase):
     path = 'somedir/filename'
     content = b'file contents'
 
-    input_file = InputFileContent(path=path, content=content)
+    input_file = InputFilesContent((FileContent(path=path, content=content),))
     digest, = self.scheduler.product_request(Digest, [input_file])
 
     req = ExecuteProcessRequest(

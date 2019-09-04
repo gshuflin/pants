@@ -154,6 +154,7 @@ impl Select {
 impl WrappedNode for Select {
   type Item = Value;
 
+  #[allow(unreachable_code, unused_variables)]
   fn run(self, context: Context) -> NodeFuture<Value> {
     let workunit_store = context.session.workunit_store();
     let types = &context.core.types;
@@ -168,25 +169,31 @@ impl WrappedNode for Select {
           entry: Arc::new(self.entry.clone()),
         }),
         &Rule::Intrinsic(Intrinsic { product, input })
-          if product == types.directory_digest && input == types.input_file_content =>
+          if product == types.directory_digest && input == types.input_files_content =>
         {
           let context = context.clone();
           let store = context.core.store();
 
           self
-            .select_product(&context, types.input_file_content, "intrinsic")
+            .select_product(&context, types.input_files_content, "intrinsic")
             .and_then(move |files_content: Value| {
-              let filename = externs::project_str(&files_content, "path");
-              let bytes = bytes::Bytes::from(externs::project_bytes(&files_content, "content"));
-
-              let path = filename.into();
-
-              store
-                .store_file_with_path(path, bytes)
-                .map_err(|e| throw(&e))
-                .map(move |digest: hashing::Digest| {
-                  Snapshot::store_directory(&context.core, &digest)
-                })
+              let file_values = externs::project_multi(&files_content, "dependencies");
+              let digests: Result<Vec<hashing::Digest>, Failure> = file_values.into_iter()
+                .map(|file| {
+                  let filename = externs::project_str(&file, "path");
+                  let bytes = bytes::Bytes::from(externs::project_bytes(&file, "content"));
+                  let path = filename.into();
+                  store
+                  .store_file_with_path(path, bytes)
+                  .map_err(|e| throw(&e))
+                  .to_boxed()
+                }).collect();
+              store::Snapshot::merge_directories(store, try_future!(digests), workunit_store)
+                .map_err(|err| throw(&err))
+                    .map(move |digest: hashing::Digest| {
+                      Snapshot::store_directory(&context.core, &digest)
+                    })
+                .to_boxed()
             })
             .to_boxed()
         }
