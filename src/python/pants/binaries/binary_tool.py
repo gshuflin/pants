@@ -128,7 +128,7 @@ class BinaryToolBase(Subsystem):
     return self._select_for_version(self.version(context))
 
   @memoized_method
-  def version(self, context=None):
+  def version(self, context=None) -> str:
     """Returns the version of the specified binary tool.
 
     If replaces_scope and replaces_name are defined, then the caller must pass in
@@ -165,7 +165,7 @@ class BinaryToolBase(Subsystem):
   def _name_to_fetch(cls):
     return '{}{}'.format(cls._get_name(), cls.suffix)
 
-  def _make_binary_request(self, version):
+  def make_binary_request(self, version: str) -> BinaryRequest:
     return BinaryRequest(
       supportdir=self.get_support_dir(),
       version=version,
@@ -175,7 +175,7 @@ class BinaryToolBase(Subsystem):
       archiver=self._get_archiver())
 
   def _select_for_version(self, version):
-    binary_request = self._make_binary_request(version)
+    binary_request = self.make_binary_request(version)
     return self._binary_util.select(binary_request)
 
   @memoized_method
