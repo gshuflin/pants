@@ -11,6 +11,11 @@ from pants.fs.archive import XZCompressedTarArchiver, create_archiver
 from pants.subsystem.subsystem import Subsystem
 from pants.util.memo import memoized_method, memoized_property
 
+from pants.binaries.binary_util import BinaryRequest, BinaryUtil, PantsHosted
+from pants.engine.fs import Digest, PathGlobs, PathGlobsAndRoot
+from pants.engine.rules import optionable_rule, rule
+
+
 
 logger = logging.getLogger(__name__)
 
@@ -229,3 +234,22 @@ class XZ(NativeTool):
 
   def _executable_location(self):
     return os.path.join(self.select(), 'bin', 'xz')
+
+class BinaryRequestDigest(Digest):
+  """This wrapper only exists to work around an engine bug."""
+
+@rule(BinaryRequestDigest, [BinaryRequest, BinaryUtil])
+def get_digest_from_binary_request(binary_request: BinaryRequest, binary_util: BinaryUtil):
+  url_generator = PantsHosted(binary_request=binary_request, baseurls=BinaryUtil._baseurls)
+  urls = url_generator.generate_urls(None, url_generator._host_platform())
+  print(f"Urls: {urls}")
+  digest =  Digest(fingerprint='foo', serialized_bytes_length=1)
+  yield BinaryRequestDigest(digest)
+
+
+def rules():
+  return [
+    optionable_rule(BinaryUtil.Factory),
+    get_digest_from_binary_request,
+  ]
+

@@ -15,6 +15,9 @@ from pants.engine.legacy.graph import HydratedTargets, TransitiveHydratedTargets
 from pants.engine.rules import console_rule, optionable_rule
 from pants.engine.selectors import Get
 
+from pants.binaries.binary_util import BinaryUtil, BinaryRequest
+from pants.binaries.binary_tool import BinaryRequestDigest
+
 
 class CountLinesOfCode(LineOriented, Goal):
   name = 'clocv2'
@@ -32,6 +35,15 @@ class CountLinesOfCode(LineOriented, Goal):
 @console_rule(CountLinesOfCode, [Console, CountLinesOfCode.Options, ClocBinary, Specs])
 def run_cloc(console, options, cloc_binary, specs):
   """Runs the cloc perl script in an isolated process"""
+
+
+  version = cloc_binary.version()
+  binary_request = cloc_binary.make_binary_request(version)
+  print(f"Binary request: {binary_request}")
+
+  cloc_digest = yield Get(BinaryRequestDigest, BinaryRequest, binary_request)
+  print(f"Cloc digest: {cloc_digest}")
+
 
   cloc_binary_path = cloc_binary.select()
 
