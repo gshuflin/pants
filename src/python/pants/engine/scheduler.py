@@ -15,7 +15,9 @@ from pants.base.project_tree import Dir, File, Link
 from pants.build_graph.address import Address
 from pants.engine.fs import (Digest, DirectoriesToMerge, DirectoryToMaterialize,
                              DirectoryWithPrefixToStrip, FileContent, FilesContent,
-                             InputFilesContent, PathGlobs, PathGlobsAndRoot, Snapshot, UrlToFetch)
+                             InputFilesContent, MaterializeDirectoriesResult,
+                             MaterializeDirectoryResult, PathGlobs, PathGlobsAndRoot, Snapshot,
+                             UrlToFetch)
 from pants.engine.isolated_process import (FallibleExecuteProcessResult,
                                            MultiPlatformExecuteProcessRequest)
 from pants.engine.native import Function, TypeId
@@ -99,6 +101,8 @@ class Scheduler:
       construct_file_content=FileContent,
       construct_files_content=FilesContent,
       construct_process_result=FallibleExecuteProcessResult,
+      construct_materialize_directory_result=MaterializeDirectoryResult,
+      construct_materialize_directories_results=MaterializeDirectoriesResult,
       type_address=Address,
       type_path_globs=PathGlobs,
       type_directory_digest=Digest,
@@ -562,6 +566,7 @@ class SchedulerSession:
       self._session,
       self._scheduler._to_value(_DirectoriesToMaterialize(directories_paths_and_digests)),
     )
+    print(f"RESULT: {result}")
     return self._scheduler._raise_or_return(result)
 
   def lease_files_in_graph(self):
