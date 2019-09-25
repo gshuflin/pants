@@ -906,8 +906,8 @@ pub extern "C" fn materialize_directories(
           })
           .collect::<Vec<_>>(),
       )
-      .map(move |metadata: Vec<store::DirectoryMaterializeMetadata>| {
-        let entries: Vec<Value> = metadata
+      .map(move |metadata_list| {
+        let entries: Vec<Value> = metadata_list
           .iter()
           .map(|metadata: &store::DirectoryMaterializeMetadata| {
             let path_list = metadata.to_path_list();

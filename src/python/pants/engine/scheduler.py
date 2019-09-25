@@ -566,7 +566,6 @@ class SchedulerSession:
       self._session,
       self._scheduler._to_value(_DirectoriesToMaterialize(directories_paths_and_digests)),
     )
-    print(f"RESULT: {result}")
     return self._scheduler._raise_or_return(result)
 
   def lease_files_in_graph(self):

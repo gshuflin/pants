@@ -179,7 +179,7 @@ class UrlToFetch(datatype([('url', str), ('digest', Digest)])):
   pass
 
 
-class Workspace():
+class Workspace:
   """Abstract handle for operations that touch the real local filesystem."""
 
   def __init__(self, scheduler):
