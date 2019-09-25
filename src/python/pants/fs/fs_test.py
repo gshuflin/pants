@@ -12,7 +12,7 @@ from pants_test.test_base import TestBase
 class FileSystemTest(TestBase):
 
   def test_materialize(self):
-    #TODO: at some point, this test should require that Workspace only be invoked from a console_role
+    #TODO(#8336): at some point, this test should require that Workspace only be invoked from a console_role
     workspace = Workspace(self.scheduler)
 
     input_files_content = InputFilesContent((
