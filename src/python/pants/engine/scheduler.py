@@ -16,6 +16,7 @@ from pants.build_graph.address import Address
 from pants.engine.fs import (Digest, DirectoriesToMerge, DirectoryToMaterialize,
                              DirectoryWithPrefixToStrip, FileContent, FilesContent,
                              InputFilesContent, PathGlobs, PathGlobsAndRoot, Snapshot, UrlToFetch)
+from pants.engine.http import HttpResponse, MakeHttpRequest
 from pants.engine.isolated_process import (FallibleExecuteProcessResult,
                                            MultiPlatformExecuteProcessRequest)
 from pants.engine.native import Function, TypeId
@@ -114,6 +115,8 @@ class Scheduler:
       type_process_result=FallibleExecuteProcessResult,
       type_generator=GeneratorType,
       type_url_to_fetch=UrlToFetch,
+      type_make_http_request=MakeHttpRequest,
+      type_http_response=HttpResponse
     )
 
     # If configured, visualize the rule graph before asserting that it is valid.

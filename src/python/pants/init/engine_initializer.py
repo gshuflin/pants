@@ -19,6 +19,7 @@ from pants.engine.build_files import create_graph_rules
 from pants.engine.console import Console
 from pants.engine.fs import create_fs_rules
 from pants.engine.goal import Goal
+from pants.engine.http import create_http_rules
 from pants.engine.isolated_process import create_process_rules
 from pants.engine.legacy.address_mapper import LegacyAddressMapper
 from pants.engine.legacy.graph import LegacyBuildGraph, create_legacy_graph_tasks
@@ -340,20 +341,19 @@ class EngineInitializer:
     # Create a Scheduler containing graph and filesystem rules, with no installed goals. The
     # LegacyBuildGraph will explicitly request the products it needs.
     rules = (
-      [
-        RootRule(Console),
-        glob_match_error_behavior_singleton,
-        build_configuration_singleton,
-        symbol_table_singleton,
-      ] +
-      create_legacy_graph_tasks() +
-      create_fs_rules() +
-      create_process_rules() +
-      create_platform_rules() +
-      create_graph_rules(address_mapper) +
-      create_options_parsing_rules() +
-      structs_rules() +
-      rules
+      RootRule(Console),
+      glob_match_error_behavior_singleton,
+      build_configuration_singleton,
+      symbol_table_singleton,
+      *create_legacy_graph_tasks(),
+      *create_fs_rules(),
+      *create_http_rules(),
+      *create_process_rules(),
+      *create_platform_rules(),
+      *create_graph_rules(address_mapper),
+      *create_options_parsing_rules(),
+      *structs_rules(),
+      *rules
     )
 
     goal_map = EngineInitializer._make_goal_map_from_rules(rules)

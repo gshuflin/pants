@@ -229,6 +229,11 @@ impl WrappedNode for Select {
             .to_boxed()
         }
         &Rule::Intrinsic(Intrinsic { product, input })
+          if product == types.http_response && input == types.make_http_request =>
+        {
+          unimplemented!()
+        }
+        &Rule::Intrinsic(Intrinsic { product, input })
           if product == types.directory_digest && input == types.directories_to_merge =>
         {
           let request = self.select_product(&context, types.directories_to_merge, "intrinsic");

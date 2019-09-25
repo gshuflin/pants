@@ -825,7 +825,9 @@ class Native(Singleton):
                     type_multi_platform_process_request,
                     type_process_result,
                     type_generator,
-                    type_url_to_fetch):
+                    type_url_to_fetch,
+                    type_make_http_request,
+                    type_http_response):
     """Create and return an ExternContext and native Scheduler."""
 
     def func(fn):
@@ -858,6 +860,8 @@ class Native(Singleton):
         ti(type_process_result),
         ti(type_generator),
         ti(type_url_to_fetch),
+        ti(type_make_http_request),
+        ti(type_http_response),
         ti(str),
         ti(bytes),
         # Project tree.

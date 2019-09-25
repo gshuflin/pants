@@ -21,6 +21,8 @@ pub struct Types {
   pub process_result: TypeId,
   pub generator: TypeId,
   pub url_to_fetch: TypeId,
+  pub make_http_request: TypeId,
+  pub http_response: TypeId,
   pub string: TypeId,
   pub bytes: TypeId,
 }

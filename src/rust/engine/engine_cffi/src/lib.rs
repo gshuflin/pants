@@ -196,6 +196,8 @@ pub extern "C" fn scheduler_create(
   type_process_result: TypeId,
   type_generator: TypeId,
   type_url_to_fetch: TypeId,
+  type_make_http_request: TypeId,
+  type_http_response: TypeId,
   type_string: TypeId,
   type_bytes: TypeId,
   build_root_buf: Buffer,
@@ -227,11 +229,11 @@ pub extern "C" fn scheduler_create(
     .to_strings()
     .unwrap_or_else(|e| panic!("Failed to decode ignore patterns as UTF8: {:?}", e));
   let types = Types {
-    construct_directory_digest: construct_directory_digest,
-    construct_snapshot: construct_snapshot,
-    construct_file_content: construct_file_content,
-    construct_files_content: construct_files_content,
-    construct_process_result: construct_process_result,
+    construct_directory_digest,
+    construct_snapshot,
+    construct_file_content,
+    construct_files_content,
+    construct_process_result,
     address: type_address,
     path_globs: type_path_globs,
     directory_digest: type_directory_digest,
@@ -247,6 +249,8 @@ pub extern "C" fn scheduler_create(
     process_result: type_process_result,
     generator: type_generator,
     url_to_fetch: type_url_to_fetch,
+    make_http_request: type_make_http_request,
+    http_response: type_http_response,
     string: type_string,
     bytes: type_bytes,
   };
