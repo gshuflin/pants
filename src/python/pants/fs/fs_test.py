@@ -6,11 +6,34 @@ from pathlib import Path
 from pants.engine.fs import (Digest, DirectoryToMaterialize, FileContent, InputFilesContent,
                              MaterializeDirectoriesResult, MaterializeDirectoryResult, Workspace)
 from pants.util.contextutil import temporary_dir
+from pants_test.console_rule_test_base import ConsoleRuleTestBase
 from pants_test.test_base import TestBase
+from pants.engine.rules import console_rule, optionable_rule
+from pants.engine.console import Console
+from pants.engine.goal import Goal, LineOriented
+
+class StubOutput(LineOriented, Goal):
+  pass
+
+
+@console_rule
+def stub_rule(console: Console, options: StubOutput.Options, workspace: Workspace) -> StubOutput:
+  with StubOutput.line_oriented(options, console) as (print_stdout, print_stderr):
+    print_stdout("foo")
+  yield StubOutput(exit_code=0)
+
+
+class WorkspaceTest(ConsoleRuleTestBase):
+  goal_cls = StubOutput
+  @classmethod
+  def rules(cls):
+    return super().rules() + optionable_rule(StubOutput) + stub_rule
+
+  #def test_basic(self):
+  #  self.assert_console_output('foo')
 
 
 class FileSystemTest(TestBase):
-
   def test_materialize(self):
     #TODO(#8336): at some point, this test should require that Workspace only be invoked from a console_role
     workspace = Workspace(self.scheduler)
