@@ -4,6 +4,7 @@
 from io import StringIO
 
 from pants.engine.console import Console
+from pants.engine.fs import Workspace
 from pants.engine.goal import Goal
 from pants.engine.selectors import Params
 from pants.init.options_initializer import BuildConfigInitializer
@@ -42,6 +43,7 @@ class ConsoleRuleTestBase(TestBase):
 
     Returns the text output of the task.
     """
+    self._init_target_subsystem
     # Create an OptionsBootstrapper for these args/env, and a captured Console instance.
     args = self._implicit_args + (self.goal_cls.name,) + tuple(args)
     env = dict(env)
@@ -50,10 +52,12 @@ class ConsoleRuleTestBase(TestBase):
     full_options = options_bootstrapper.get_full_options(list(self.goal_cls.Options.known_scope_infos()))
     stdout, stderr = StringIO(), StringIO()
     console = Console(stdout=stdout, stderr=stderr)
+    scheduler = self.scheduler
+    workspace = Workspace(scheduler)
 
     # Run for the target specs parsed from the args.
     specs = TargetRootsCalculator.parse_specs(full_options.target_specs, self.build_root)
-    params = Params(specs, console, options_bootstrapper)
+    params = Params(specs, console, options_bootstrapper, workspace)
     actual_exit_code = self.scheduler.run_console_rule(self.goal_cls, params)
 
     # Flush and capture console output.
