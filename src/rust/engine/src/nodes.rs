@@ -231,8 +231,21 @@ impl WrappedNode for Select {
         &Rule::Intrinsic(Intrinsic { product, input })
           if product == types.http_response && input == types.make_http_request =>
         {
-          unimplemented!()
-        }
+          let context = context.clone();
+          let core = context.core.clone();
+          self
+            .select_product(&context, types.make_http_request, "intrinsic")
+            .and_then(move |val| context.get(HttpRequester(externs::key_for(val))))
+            .map(move |_http_response: HttpResponse| {
+
+              let output: Value = externs::unsafe_call(
+                &core.types.construct_http_response,
+                &[]
+              );
+              output
+            })
+            .to_boxed()
+        },
         &Rule::Intrinsic(Intrinsic { product, input })
           if product == types.directory_digest && input == types.directories_to_merge =>
         {
@@ -746,6 +759,27 @@ impl From<Snapshot> for NodeKey {
 }
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub struct HttpRequester(Key);
+
+impl From<HttpRequester> for NodeKey {
+  fn from(n: HttpRequester) -> Self {
+    NodeKey::HttpRequester(n)
+  }
+}
+
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub struct HttpResponse;
+
+impl WrappedNode for HttpRequester {
+  type Item = HttpResponse;
+
+  fn run(self, _context: Context) -> NodeFuture<HttpResponse> {
+    future::ok(HttpResponse).to_boxed()
+  }
+}
+
+
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct DownloadedFile(Key);
 
 impl DownloadedFile {
@@ -1136,6 +1170,7 @@ impl NodeTracer<NodeKey> for Tracer {
 pub enum NodeKey {
   DigestFile(DigestFile),
   DownloadedFile(DownloadedFile),
+  HttpRequester(HttpRequester),
   MultiPlatformExecuteProcess(Box<MultiPlatformExecuteProcess>),
   ReadLink(ReadLink),
   Scandir(Scandir),
@@ -1149,6 +1184,7 @@ impl NodeKey {
     match self {
       &NodeKey::MultiPlatformExecuteProcess(..) => "ProcessResult".to_string(),
       &NodeKey::DownloadedFile(..) => "DownloadedFile".to_string(),
+      &NodeKey::HttpRequester(..) => "HttpRequester".to_string(),
       &NodeKey::Select(ref s) => format!("{}", s.product),
       &NodeKey::Task(ref s) => format!("{}", s.product),
       &NodeKey::Snapshot(..) => "Snapshot".to_string(),
@@ -1172,6 +1208,7 @@ impl NodeKey {
       | &NodeKey::Select { .. }
       | &NodeKey::Snapshot { .. }
       | &NodeKey::Task { .. }
+      | &NodeKey::HttpRequester { .. }
       | &NodeKey::DownloadedFile { .. } => None,
     }
   }
@@ -1203,6 +1240,7 @@ impl Node for NodeKey {
         NodeKey::Scandir(n) => n.run(context).map(NodeResult::from).to_boxed(),
         NodeKey::Select(n) => n.run(context).map(NodeResult::from).to_boxed(),
         NodeKey::Snapshot(n) => n.run(context).map(NodeResult::from).to_boxed(),
+        NodeKey::HttpRequester(n) => n.run(context).map(NodeResult::from).to_boxed(),
         NodeKey::Task(n) => n.run(context).map(NodeResult::from).to_boxed(),
       }
     })
@@ -1228,6 +1266,7 @@ impl Node for NodeKey {
       | NodeResult::LinkDest(_)
       | NodeResult::ProcessResult(_)
       | NodeResult::Snapshot(_)
+      | NodeResult::HttpResponse(_)
       | NodeResult::Value(_) => None,
     }
   }
@@ -1247,6 +1286,7 @@ impl Display for NodeKey {
     match self {
       &NodeKey::DigestFile(ref s) => write!(f, "DigestFile({:?})", s.0),
       &NodeKey::DownloadedFile(ref s) => write!(f, "DownloadedFile({:?})", s.0),
+      &NodeKey::HttpRequester(ref s) => write!(f, "HttpRequester({:?})", s.0),
       &NodeKey::MultiPlatformExecuteProcess(ref s) => {
         write!(f, "MultiPlatformExecuteProcess({:?}", s.0)
       }
@@ -1276,7 +1316,14 @@ pub enum NodeResult {
   LinkDest(LinkDest),
   ProcessResult(ProcessResult),
   Snapshot(Arc<store::Snapshot>),
+  HttpResponse(HttpResponse),
   Value(Value),
+}
+
+impl From<HttpResponse> for NodeResult {
+  fn from(r: HttpResponse) -> Self {
+    NodeResult::HttpResponse(r)
+  }
 }
 
 impl From<Value> for NodeResult {
@@ -1332,6 +1379,17 @@ impl TryFrom<NodeResult> for Arc<store::Snapshot> {
   fn try_from(nr: NodeResult) -> Result<Self, ()> {
     match nr {
       NodeResult::Snapshot(v) => Ok(v),
+      _ => Err(()),
+    }
+  }
+}
+
+impl TryFrom<NodeResult> for HttpResponse {
+  type Error = ();
+
+  fn try_from(nr: NodeResult) -> Result<Self, ()> {
+    match nr {
+      NodeResult::HttpResponse(r) => Ok(r),
       _ => Err(()),
     }
   }

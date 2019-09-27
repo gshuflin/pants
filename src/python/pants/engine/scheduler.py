@@ -100,6 +100,7 @@ class Scheduler:
       construct_file_content=FileContent,
       construct_files_content=FilesContent,
       construct_process_result=FallibleExecuteProcessResult,
+      construct_http_response=MakeHttpRequest,
       type_address=Address,
       type_path_globs=PathGlobs,
       type_directory_digest=Digest,

@@ -6,6 +6,7 @@ pub struct Types {
   pub construct_file_content: Function,
   pub construct_files_content: Function,
   pub construct_process_result: Function,
+  pub construct_http_response: Function,
   pub address: TypeId,
   pub path_globs: TypeId,
   pub directory_digest: TypeId,
