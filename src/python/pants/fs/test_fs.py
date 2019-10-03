@@ -14,7 +14,7 @@ from pants.engine.fs import (
   Workspace,
 )
 from pants.engine.goal import Goal
-from pants.engine.rules import console_rule
+from pants.engine.rules import console_rule, optionable_rule
 from pants.engine.selectors import Get
 from pants.util.contextutil import temporary_dir
 from pants_test.console_rule_test_base import ConsoleRuleTestBase
@@ -24,9 +24,15 @@ from pants_test.test_base import TestBase
 class TestWorkspaceGoal(Goal):
   name = 'test-workspace-goal'
 
+  @classmethod
+  def register_options(cls, register) -> None:
+    super().register_options(register)
+    register('--tempdir', type=str, default='', fingerprint=True, help='Write files to here.')
+
 
 @console_rule
-def workspace_console_rule(console: Console, workspace: Workspace) -> TestWorkspaceGoal:
+def workspace_console_rule(console: Console, workspace: Workspace, options: TestWorkspaceGoal.Options) -> TestWorkspaceGoal:
+  print(f"Options IS: {options}")
   input_files_content = InputFilesContent((
     FileContent(path='a.txt', content=b'hello', is_executable=False),
   ))
@@ -51,7 +57,8 @@ class WorkspaceInConsoleRuleTest(ConsoleRuleTestBase):
     return super().rules() + [workspace_console_rule]
 
   def test_basic(self):
-    self.assert_console_output_contains("Wrote file: a.txt")
+    self.assert_console_output_contains("qWrote file: a.txt")
+    #self.assert_console_output_contains("qWrote file: a.txt", args=["--test-workspace-goal-tempdir", "yolo"])
 
 
 class FileSystemTest(TestBase):
