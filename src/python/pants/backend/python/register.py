@@ -12,6 +12,7 @@ from pants.backend.python.rules import (
   pex_from_target_closure,
   prepare_chrooted_python_sources,
   python_create_binary,
+  python_repl,
   python_test_runner,
   run_setup_py,
 )
@@ -101,6 +102,7 @@ def rules():
     *pex.rules(),
     *pex_from_target_closure.rules(),
     *python_test_runner.rules(),
+    *python_repl.rules(),
     *python_create_binary.rules(),
     *python_native_code.rules(),
     *run_setup_py.rules(),

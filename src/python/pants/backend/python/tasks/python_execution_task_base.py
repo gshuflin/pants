@@ -1,6 +1,9 @@
 # Copyright 2017 Pants project contributors (see CONTRIBUTORS.md).
 # Licensed under the Apache License, Version 2.0 (see LICENSE).
 
+import logging
+logger = logging.getLogger(__name__)
+
 import os
 from dataclasses import dataclass
 from typing import Dict, Optional
@@ -153,6 +156,8 @@ class PythonExecutionTaskBase(ResolveRequirementsTaskBase):
       # Note that we check for the existence of the directory, instead of for invalid_vts,
       # to cover the empty case.
       if not os.path.isdir(path):
+        logger.warning(f"PEX PATH: {path}")
+        logger.warning(f"PEX SOURCES: {GatherSources.PYTHON_SOURCES}")
         pexes = [
           self.context.products.get_data(ResolveRequirements.REQUIREMENTS_PEX),
           self.context.products.get_data(GatherSources.PYTHON_SOURCES)
