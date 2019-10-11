@@ -831,6 +831,7 @@ class Native(metaclass=SingletonMetaclass):
                     construct_process_result,
                     construct_materialize_directory_result,
                     construct_materialize_directories_results,
+                    construct_interactive_process_result,
                     type_address,
                     type_path_globs,
                     type_directory_digest,
@@ -846,7 +847,10 @@ class Native(metaclass=SingletonMetaclass):
                     type_multi_platform_process_request,
                     type_process_result,
                     type_generator,
-                    type_url_to_fetch):
+                    type_url_to_fetch,
+                    type_interactive_process_request,
+                    type_interactive_process_result,
+                    ):
     """Create and return an ExternContext and native Scheduler."""
 
     def func(fn):
@@ -865,6 +869,7 @@ class Native(metaclass=SingletonMetaclass):
         func(construct_process_result),
         func(construct_materialize_directory_result),
         func(construct_materialize_directories_results),
+        func(construct_interactive_process_result),
         # Types.
         ti(type_address),
         ti(type_path_globs),
@@ -884,6 +889,8 @@ class Native(metaclass=SingletonMetaclass):
         ti(type_url_to_fetch),
         ti(str),
         ti(bytes),
+        ti(type_interactive_process_request),
+        ti(type_interactive_process_result),
         # Project tree.
         self.context.utf8_buf(build_root),
         self.context.utf8_buf(local_store_dir),

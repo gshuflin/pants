@@ -31,6 +31,7 @@ from pants.engine.fs import (
   Snapshot,
   UrlToFetch,
 )
+from pants.engine.interactive_runner import InteractiveProcessRequest, InteractiveProcessResult
 from pants.engine.isolated_process import (
   FallibleExecuteProcessResult,
   MultiPlatformExecuteProcessRequest,
@@ -123,6 +124,7 @@ class Scheduler:
       construct_process_result=FallibleExecuteProcessResult,
       construct_materialize_directory_result=MaterializeDirectoryResult,
       construct_materialize_directories_results=MaterializeDirectoriesResult,
+      construct_interactive_process_result=InteractiveProcessResult,
       type_address=Address,
       type_path_globs=PathGlobs,
       type_directory_digest=Digest,
@@ -139,6 +141,8 @@ class Scheduler:
       type_process_result=FallibleExecuteProcessResult,
       type_generator=GeneratorType,
       type_url_to_fetch=UrlToFetch,
+      type_interactive_process_request=InteractiveProcessRequest,
+      type_interactive_process_result=InteractiveProcessResult,
     )
 
     # If configured, visualize the rule graph before asserting that it is valid.
@@ -583,6 +587,17 @@ class SchedulerSession:
       self._scheduler._to_value(_DirectoryDigests(directory_digests)),
     )
     return self._scheduler._raise_or_return(result)
+
+  def run_local_interactive_process(self, request: InteractiveProcessRequest) -> InteractiveProcessResult:
+    sched_pointer = self._scheduler._scheduler
+
+    result  = self._scheduler._native.lib.run_local_interactive_process(
+      sched_pointer,
+      self._scheduler._to_value(request)
+    )
+    return self._scheduler._raise_or_return(result)
+
+
 
   def materialize_directories(self, directories_paths_and_digests):
     """Creates the specified directories on the file system.

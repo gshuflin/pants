@@ -60,6 +60,8 @@ use std::os::raw;
 use std::panic;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
+//use std::sync::mpsc;
+use ctrlc;
 
 // TODO: Consider renaming and making generic for collections of PyResults.
 #[repr(C)]
@@ -183,6 +185,7 @@ pub extern "C" fn scheduler_create(
   construct_process_result: Function,
   construct_materialize_directory_result: Function,
   construct_materialize_directories_results: Function,
+  construct_interactive_process_result: Function,
   type_address: TypeId,
   type_path_globs: TypeId,
   type_directory_digest: TypeId,
@@ -201,6 +204,8 @@ pub extern "C" fn scheduler_create(
   type_url_to_fetch: TypeId,
   type_string: TypeId,
   type_bytes: TypeId,
+  type_interactive_process_request: TypeId,
+  type_interactive_process_result: TypeId,
   build_root_buf: Buffer,
   local_store_dir_buf: Buffer,
   ignore_patterns_buf: BufferBuffer,
@@ -235,6 +240,7 @@ pub extern "C" fn scheduler_create(
     construct_process_result,
     construct_materialize_directory_result,
     construct_materialize_directories_results,
+    construct_interactive_process_result,
     type_address,
     type_path_globs,
     type_directory_digest,
@@ -253,6 +259,8 @@ pub extern "C" fn scheduler_create(
     type_url_to_fetch,
     type_string,
     type_bytes,
+    type_interactive_process_request,
+    type_interactive_process_result,
     build_root_buf,
     local_store_dir_buf,
     ignore_patterns_buf,
@@ -300,6 +308,7 @@ fn make_core(
   construct_process_result: Function,
   construct_materialize_directory_result: Function,
   construct_materialize_directories_results: Function,
+  construct_interactive_process_result: Function,
   type_address: TypeId,
   type_path_globs: TypeId,
   type_directory_digest: TypeId,
@@ -318,6 +327,8 @@ fn make_core(
   type_url_to_fetch: TypeId,
   type_string: TypeId,
   type_bytes: TypeId,
+  type_interactive_process_request: TypeId,
+  type_interactive_process_result: TypeId,
   build_root_buf: Buffer,
   local_store_dir_buf: Buffer,
   ignore_patterns_buf: BufferBuffer,
@@ -355,6 +366,7 @@ fn make_core(
     construct_process_result: construct_process_result,
     construct_materialize_directories_results,
     construct_materialize_directory_result,
+    construct_interactive_process_result,
     address: type_address,
     path_globs: type_path_globs,
     directory_digest: type_directory_digest,
@@ -373,6 +385,8 @@ fn make_core(
     url_to_fetch: type_url_to_fetch,
     string: type_string,
     bytes: type_bytes,
+    interactive_process_request: type_interactive_process_request,
+    interactive_process_result: type_interactive_process_result,
   };
   #[allow(clippy::redundant_closure)] // I couldn't find an easy way to remove this closure.
   let mut tasks = with_tasks(tasks_ptr, |tasks| tasks.clone());
@@ -990,6 +1004,50 @@ pub extern "C" fn merge_directories(
       .map(|dir| nodes::Snapshot::store_directory(&scheduler.core, &dir))
       .into()
   })
+}
+
+#[no_mangle]
+pub extern "C" fn run_local_interactive_process(
+  scheduler_ptr: *mut Scheduler,
+  request: Handle,
+) -> PyResult {
+  use std::process;
+
+  with_scheduler(scheduler_ptr, |scheduler| {
+    let types = &scheduler.core.types;
+    let construct_interactive_process_result = types.construct_interactive_process_result;
+
+    let value: Value = request.into();
+
+    let argv: Vec<String> = externs::project_multi_strs(&value, "argv");
+    if argv.is_empty() {
+      return Err("Empty argv list not permitted".to_string());
+    }
+
+    let mut command = process::Command::new(argv[0].clone());
+    for arg in argv[1..].iter() {
+      command.arg(arg);
+    }
+
+    let env = externs::project_tuple_encoded_map(&value, "env")?;
+    for (key, value) in env.iter() {
+      command.env(key, value);
+    }
+
+    // deliberately do-nothing SIGINT handler
+    ctrlc::set_handler(|| {}).map_err(|e| e.to_string())?;
+
+    let mut subprocess = command.spawn().map_err(|e| e.to_string())?;
+    let exit_status = subprocess.wait().map_err(|e| e.to_string())?;
+    let code = exit_status.code().unwrap_or(-1);
+
+    let output: Result<Value, String> = Ok(externs::unsafe_call(
+      &construct_interactive_process_result,
+      &[externs::store_i64(i64::from(code))],
+    ));
+    output
+  })
+  .into()
 }
 
 #[no_mangle]
