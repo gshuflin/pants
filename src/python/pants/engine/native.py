@@ -662,6 +662,7 @@ class Native(metaclass=SingletonMetaclass):
     return res
 
   def add_cffi_extern_method_runtime_exception(self, error_info):
+    print(f"add_cffi_extern_method_runtime_exception called with {error_info}")
     assert isinstance(error_info, self.CFFIExternMethodRuntimeErrorInfo)
     self._errors_during_execution.append(error_info)
 

@@ -449,6 +449,7 @@ class SchedulerSession:
     roots = list(zip(execution_request.roots,
                      self._scheduler._run_and_return_roots(self._session, execution_request.native)))
 
+    # a root is getting created with type Throw
     self._maybe_visualize()
 
     logger.debug(
@@ -486,6 +487,8 @@ class SchedulerSession:
     """
     request = self.execution_request([product], [subject])
     returns, throws = self.execute(request)
+    print("self.execute() finished")
+    print(f"throws: {throws}")
 
     if throws:
       _, state = throws[0]

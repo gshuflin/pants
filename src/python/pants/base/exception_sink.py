@@ -54,6 +54,7 @@ class SignalHandler:
       "This should never happen, someone must have modified the counter outside of SignalHandler."
 
   def _handle_sigint_if_enabled(self, signum, _frame):
+    print("handle_sigint_if_enabled invoked")
     with self._ignore_sigint_lock:
       self._check_sigint_gate_is_correct()
       threads_ignoring_sigint = self._threads_ignoring_sigint
@@ -65,15 +66,18 @@ class SignalHandler:
     with self._ignore_sigint_lock:
       self._check_sigint_gate_is_correct()
       self._threads_ignoring_sigint += 1
+      print("ignoring_sigint context manager increments counter")
     try:
       yield
     finally:
       with self._ignore_sigint_lock:
         self._threads_ignoring_sigint -= 1
+        print("ignoring_sigint context manager decrements counter")
         self._check_sigint_gate_is_correct()
 
   def handle_sigint(self, signum, _frame):
-    raise KeyboardInterrupt('User interrupted execution with control-c!')
+    print("handle sigint handler called")
+    raise KeyboardInterrupt('User interrupted execution with control-c desu yo"!')
 
   # TODO(#7406): figure out how to let sys.exit work in a signal handler instead of having to raise
   # this exception!

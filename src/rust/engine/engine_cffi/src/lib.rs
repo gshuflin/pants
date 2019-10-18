@@ -61,7 +61,7 @@ use std::panic;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 //use std::sync::mpsc;
-use ctrlc;
+//use ctrlc;
 
 // TODO: Consider renaming and making generic for collections of PyResults.
 #[repr(C)]
@@ -571,9 +571,12 @@ pub extern "C" fn scheduler_execute(
   with_scheduler(scheduler_ptr, |scheduler| {
     with_execution_request(execution_request_ptr, |execution_request| {
       with_session(session_ptr, |session| {
-        Box::into_raw(RawNodes::create(
+        println!("In rust scheduler_execute, about to run scheduler.execute");
+        let output = Box::into_raw(RawNodes::create(
           scheduler.execute(execution_request, session),
-        ))
+        ));
+        println!("In rust scheduler_execute, done with scheduler.execute");
+        output
       })
     })
   })
@@ -1035,7 +1038,7 @@ pub extern "C" fn run_local_interactive_process(
     }
 
     // deliberately do-nothing SIGINT handler
-    ctrlc::set_handler(|| {}).map_err(|e| e.to_string())?;
+    //ctrlc::set_handler(|| {}).map_err(|e| e.to_string())?;
 
     let mut subprocess = command.spawn().map_err(|e| e.to_string())?;
     let exit_status = subprocess.wait().map_err(|e| e.to_string())?;
