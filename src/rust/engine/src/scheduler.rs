@@ -270,12 +270,16 @@ impl Scheduler {
     // If the join failed (due to `Invalidated`, since that is the only error we propagate), retry
     // the entire set of roots.
     core.executor.spawn_and_ignore(roots_res.then(move |res| {
-      if let Ok(res) = res {
+      println!("Entering execute_helper closure");
+      let output = if let Ok(res) = res {
+        println!("About to send the result over mpsc");
         sender.send(res).map_err(|_| ())
       } else {
         Scheduler::execute_helper(context, sender, roots, count - 1);
         Ok(())
-      }
+      };
+      println!("Done!");
+      output
     }));
   }
 
@@ -337,6 +341,7 @@ impl Scheduler {
       }
       None => loop {
         if let Ok(res) = receiver.recv_timeout(Duration::from_millis(100)) {
+          println!("Within execute(), res is {:?}", res);
           break res;
         }
       },
