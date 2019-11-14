@@ -205,7 +205,22 @@ class LegacyGraphSession:
     :returns: An exit code.
     """
 
-    async_reporter = AsyncWorkunitHandler(self.scheduler_session, callback=None, report_interval_seconds=0.01)
+
+    @dataclass
+    class WorkunitTracker:
+      count: int = 0
+      def increment_count(self, workunits):
+        n = len(workunits)
+        #print(f"Incrementing workunits by: {n}")
+        for workunit in workunits:
+          if 'display_info' in workunit:
+            pass
+            #print(f"DISPLAY INFO: {workunit['display_info']}")
+          #print(workunit['name'])
+        self.count += n
+
+    tracker = WorkunitTracker()
+    async_reporter = AsyncWorkunitHandler(self.scheduler_session, callback=tracker.increment_count, report_interval_seconds=0.01)
     subject = target_roots.specs
     console = Console(
       use_colors=options_bootstrapper.bootstrap_options.for_global_scope().colors
@@ -225,6 +240,8 @@ class LegacyGraphSession:
 
         if exit_code != PANTS_SUCCEEDED_EXIT_CODE:
           return exit_code
+
+    print(f"Done with run, tracker: {tracker.count}")
 
     return PANTS_SUCCEEDED_EXIT_CODE
 

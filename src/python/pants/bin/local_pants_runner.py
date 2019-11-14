@@ -106,7 +106,8 @@ class LocalPantsRunner(ExceptionSink.AccessGlobalExiterMixin):
 
       v2_ui = options.for_global_scope().v2_ui
       zipkin_trace_v2 = options.for_scope('reporting').zipkin_trace_v2
-      should_report_workunits = False
+      zipkin_trace_v2 = True
+      should_report_workunits = True
       graph_session = graph_scheduler_helper.new_session(zipkin_trace_v2, RunTracker.global_instance().run_id, v2_ui, should_report_workunits)
     return graph_session, graph_session.scheduler_session
 
@@ -306,6 +307,7 @@ class LocalPantsRunner(ExceptionSink.AccessGlobalExiterMixin):
     self._run_tracker.pantsd_stats.set_scheduler_metrics(metrics)
     engine_workunits = self._scheduler_session.engine_workunits(metrics)
     if engine_workunits:
+      print(f"Engine workunits: {len(engine_workunits)}")
       self._run_tracker.report.bulk_record_workunits(engine_workunits)
 
   def _run(self):

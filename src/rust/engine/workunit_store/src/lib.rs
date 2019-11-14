@@ -70,8 +70,9 @@ impl WorkUnitStore {
     F: FnOnce(&[WorkUnit]) -> T,
   {
     let workunits = self.workunits.lock();
-    let cur_len = workunits.len();
     let latest = self.last_seen_workunit;
+    let cur_len = workunits.len();
+    println!("workunit cur len: {} and latest: {}", cur_len, latest);
     self.last_seen_workunit = cur_len;
     f(&workunits[latest..cur_len])
   }

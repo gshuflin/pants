@@ -461,6 +461,7 @@ pub extern "C" fn scheduler_metrics(
         values.push(externs::store_utf8("engine_workunits"));
         values.push(value);
       };
+      println!("LENGTH OF VALUES: {}", values.len());
       externs::store_dict(&values).into()
     })
   })
