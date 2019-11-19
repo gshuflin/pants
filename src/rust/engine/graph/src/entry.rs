@@ -434,7 +434,11 @@ impl<N: Node> Entry<N> {
         dirty,
         ..
       } => {
-        if result == Some(Err(N::Error::invalidated())) {
+        let result_is_error = match result {
+          Some(Err(_)) => true,
+          _ => false
+        };
+        if result_is_error {
           // Because it is always ephemeral, invalidation is the only type of Err that we do not
           // persist in the Graph. Instead, swap the Node to NotStarted to drop all waiters,
           // causing them to also experience invalidation (transitively).

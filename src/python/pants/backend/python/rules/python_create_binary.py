@@ -22,6 +22,10 @@ from pants.rules.core.strip_source_root import SourceRootStrippedSources
 @rule
 async def create_python_binary(python_binary_adaptor: PythonBinaryAdaptor,
   python_setup: PythonSetup) -> CreatedBinary:
+
+  print("------------------------------------------------hello I'm running")
+  raise RuntimeError("hello")
+
   transitive_hydrated_targets = await Get(
     TransitiveHydratedTargets, BuildFileAddresses((python_binary_adaptor.address,))
   )
