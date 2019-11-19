@@ -22,6 +22,12 @@ from pants.rules.core.strip_source_root import SourceRootStrippedSources
 @rule
 def create_python_binary(python_binary_adaptor: PythonBinaryAdaptor,
   python_setup: PythonSetup) -> CreatedBinary:
+
+  print("About to throw an exception in create_python_binary")
+  print("------------------------------------------------")
+  raise RuntimeError("hello")
+
+
   transitive_hydrated_targets = yield Get(
     TransitiveHydratedTargets, BuildFileAddresses((python_binary_adaptor.address,))
   )

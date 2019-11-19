@@ -272,7 +272,11 @@ pub fn generator_send(generator: &Value, arg: &Value) -> Result<GeneratorRespons
     with_externs(|e| (e.generator_send)(e.context, generator as &Handle, arg as &Handle));
   match response {
     PyGeneratorResponse::Broke(h) => Ok(GeneratorResponse::Break(Value::new(h))),
-    PyGeneratorResponse::Throw(h) => Err(PyResult::failure_from(Value::new(h))),
+    PyGeneratorResponse::Throw(h) => {
+      let val = Value::new(h);
+      println!("Getting a Throw PyGeneratorResponse in generator_send: {:?}", val);
+      Err(PyResult::failure_from(val))
+    },
     PyGeneratorResponse::Get(product, handle, ident, declared_subject) => {
       let mut interns = INTERNS.write();
       let g = Get {
