@@ -87,6 +87,13 @@ impl<N: Node> EntryResult<N> {
       *self = EntryResult::Clean(value.clone())
     }
   }
+
+  fn get_failure(&self) -> Option<N::Error> {
+    match self {
+      EntryResult::Clean(Err(fail)) | EntryResult::Dirty(Err(fail)) => Some(fail.clone()),
+      _ => None,
+    }
+  }
 }
 
 impl<N: Node> AsRef<Result<N::Item, N::Error>> for EntryResult<N> {
@@ -309,10 +316,17 @@ impl<N: Node> Entry<N> {
           ref result,
           generation,
           ..
-        } if self.node.cacheable() && !result.is_dirty() => {
+        } if self.node.cacheable() && !result.is_dirty() && result.get_failure().is_none() => {
           return future::result(result.as_ref().clone())
             .map(move |res| (res, generation))
             .to_boxed();
+        },
+        &mut EntryState::Completed {
+          ref result, ..
+        } if result.get_failure().is_some() => {
+          println!("hitting this case!");
+          let failure = result.get_failure().unwrap();
+          return future::err(failure).to_boxed();
         }
         _ => {
           // Fall through to the second match.
@@ -498,6 +512,7 @@ impl<N: Node> Entry<N> {
           for waiter in waiters {
             let _ = waiter.send(next_result.as_ref().clone().map(|res| (res, generation)));
           }
+          //println!("Next result: {:?}", next_result);
           EntryState::Completed {
             result: next_result,
             dep_generations,
