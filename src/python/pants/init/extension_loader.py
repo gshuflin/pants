@@ -60,6 +60,7 @@ def load_plugins(build_configuration, plugins, working_set):
   """
   loaded = {}
   for plugin in plugins:
+    print(f"PLUGIN: {plugin}")
     req = Requirement.parse(plugin)
     dist = working_set.find(req)
 

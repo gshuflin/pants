@@ -3,7 +3,9 @@
 
 import logging
 from contextlib import contextmanager
+from typing import Callable, List
 
+from pants.subsystem.subsystem import Subsystem
 from pants.base.build_environment import get_buildroot
 from pants.base.cmd_line_spec_parser import CmdLineSpecParser
 from pants.base.exception_sink import ExceptionSink
@@ -112,7 +114,7 @@ class LocalPantsRunner(ExceptionSink.AccessGlobalExiterMixin):
       # be merged with the zipkin_trace_v2 flag, since they both involve most
       # of the same engine functionality, but for now is separate to avoid
       # breaking functionality associated with zipkin tracing while iterating on streaming workunit reporting.
-      stream_workunits = options.for_scope('reporting').stream_workunits
+      stream_workunits = len(options.for_global_scope().streaming_workunits_handlers) != 0
       graph_session = graph_scheduler_helper.new_session(zipkin_trace_v2, RunTracker.global_instance().run_id, v2_ui, should_report_workunits=stream_workunits)
     return graph_session, graph_session.scheduler_session
 
@@ -314,13 +316,16 @@ class LocalPantsRunner(ExceptionSink.AccessGlobalExiterMixin):
     if engine_workunits:
       self._run_tracker.report.bulk_record_workunits(engine_workunits)
 
+
   def _run(self):
     engine_result = PANTS_FAILED_EXIT_CODE
     goal_runner_result = PANTS_FAILED_EXIT_CODE
     try:
       self._maybe_handle_help()
 
-      streaming_reporter = StreamingWorkunitHandler(self._scheduler_session, callback=None)
+      streaming_handlers = self._options.for_global_scope().streaming_workunits_handlers
+      callbacks = Subsystem.get_streaming_workunit_callbacks(streaming_handlers)
+      streaming_reporter = StreamingWorkunitHandler(self._scheduler_session, callbacks=callbacks)
       with streaming_reporter.session():
         engine_result = self._maybe_run_v2()
 

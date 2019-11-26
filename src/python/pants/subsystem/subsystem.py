@@ -1,8 +1,9 @@
 # Copyright 2015 Pants project contributors (see CONTRIBUTORS.md).
 # Licensed under the Apache License, Version 2.0 (see LICENSE).
 
+import importlib
 import inspect
-from typing import Dict, Optional, Tuple, Type, TypeVar, Union, cast
+from typing import Callable, Dict, List, Optional, Tuple, Type, TypeVar, Union, cast
 
 from pants.option.optionable import Optionable
 from pants.option.options import Options
@@ -169,3 +170,34 @@ class Subsystem(SubsystemClientMixin, Optionable):
     :API: public
     """
     return self._scoped_options
+
+  @staticmethod
+  def get_streaming_workunit_callbacks(subsystem_names: List[str]) -> List[Callable]:
+    callables = []
+
+    for name in subsystem_names:
+      try:
+        module_name = '.'.join(name.split(".")[:-1])
+        class_name = name.split(".")[-1]
+        module = importlib.import_module(module_name)
+        subsystem_class = getattr(module, class_name)
+      except (IndexError, AttributeError) as e:
+        logger.warning(f"Invalid module name: {name}: {e}")
+        continue
+      except ImportError as e:
+        logger.warning(f"Could not import {module_name}: {e}")
+        continue
+      try:
+        subsystem = subsystem_class.global_instance()
+      except AttributeError:
+        logger.warning(f"{subsystem_class} is not a global subsystem")
+        continue
+
+      try:
+        callables.append(subsystem.handle_workunits)
+      except AttributeError:
+        logger.warning(f"{subsystem_class} does not have a `handle_workunits` method")
+        continue
+
+    return callables
+
