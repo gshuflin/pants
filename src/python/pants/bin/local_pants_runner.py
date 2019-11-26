@@ -1,8 +1,10 @@
 # Copyright 2015 Pants project contributors (see CONTRIBUTORS.md).
 # Licensed under the Apache License, Version 2.0 (see LICENSE).
 
+import importlib
 import logging
 from contextlib import contextmanager
+from typing import Callable, List
 
 from pants.base.build_environment import get_buildroot
 from pants.base.cmd_line_spec_parser import CmdLineSpecParser
@@ -314,13 +316,46 @@ class LocalPantsRunner(ExceptionSink.AccessGlobalExiterMixin):
     if engine_workunits:
       self._run_tracker.report.bulk_record_workunits(engine_workunits)
 
+
+  @staticmethod
+  def get_streaming_workunit_callbacks(subsystem_names: List[str]) -> List[Callable]:
+    callables = []
+
+    for name in subsystem_names:
+      try:
+        module_name = '.'.join(name.split(".")[:-1])
+        class_name = name.split(".")[-1]
+        module = importlib.import_module(module_name)
+        subsystem_class = getattr(module, class_name)
+      except (IndexError, AttributeError) as e:
+        logger.warning(f"Invalid module name: {name}: {e}")
+        continue
+      except ImportError as e:
+        logger.warning(f"Could not import {module_name}: {e}")
+        continue
+      try:
+        subsystem = subsystem_class.global_instance()
+      except AttributeError:
+        logger.warning(f"{subsystem_class} is not a global subsystem")
+        continue
+
+      try:
+        callables.append(subsystem.handle_workunits)
+      except AttributeError:
+        logger.warning(f"{subsystem_class} does not have a `handle_workunits` method")
+        continue
+
+    return callables
+
   def _run(self):
     engine_result = PANTS_FAILED_EXIT_CODE
     goal_runner_result = PANTS_FAILED_EXIT_CODE
     try:
       self._maybe_handle_help()
 
-      streaming_reporter = StreamingWorkunitHandler(self._scheduler_session, callback=None)
+      streaming_handlers = self._options.for_global_scope().streaming_workunits_handlers
+      callbacks = self.get_streaming_workunit_callbacks(streaming_handlers)
+      streaming_reporter = StreamingWorkunitHandler(self._scheduler_session, callbacks=callbacks)
       with streaming_reporter.session():
         engine_result = self._maybe_run_v2()
 
