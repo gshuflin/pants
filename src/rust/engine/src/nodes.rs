@@ -362,6 +362,24 @@ impl WrappedNode for Select {
             })
             .to_boxed()
         }
+        &Rule::Intrinsic(Intrinsic { product, input })
+          if product == types.http_response && input == types.make_http_request =>
+        {
+          let context = context.clone();
+          let core = context.core.clone();
+          self
+            .select_product(&context, types.make_http_request, "intrinsic")
+            .and_then(move |val| context.get(HttpRequester(externs::key_for(val))))
+            .map(move |_http_response: HttpResponse| {
+
+              let output: Value = externs::unsafe_call(
+                &core.types.construct_http_response,
+                &[]
+              );
+              output
+            })
+          .to_boxed()
+        }
         &Rule::Intrinsic(i) => panic!("Unrecognized intrinsic: {:?}", i),
       },
       &rule_graph::Entry::Param(type_id) => {
@@ -380,6 +398,27 @@ impl WrappedNode for Select {
     }
   }
 }
+
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub struct HttpRequester(Key);
+
+impl From<HttpRequester> for NodeKey {
+  fn from(n: HttpRequester) -> Self {
+    NodeKey::HttpRequester(n)
+  }
+}
+
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub struct HttpResponse;
+
+impl WrappedNode for HttpRequester {
+  type Item = HttpResponse;
+
+  fn run(self, _context: Context) -> NodeFuture<HttpResponse> {
+    future::ok(HttpResponse).to_boxed()
+  }
+}
+
 
 impl From<Select> for NodeKey {
   fn from(n: Select) -> Self {
@@ -1165,6 +1204,7 @@ pub enum NodeKey {
   Scandir(Scandir),
   Select(Box<Select>),
   Snapshot(Snapshot),
+  HttpRequester(HttpRequester),
   Task(Box<Task>),
 }
 
@@ -1179,6 +1219,7 @@ impl NodeKey {
       &NodeKey::DigestFile(..) => "DigestFile".to_string(),
       &NodeKey::ReadLink(..) => "LinkDest".to_string(),
       &NodeKey::Scandir(..) => "DirectoryListing".to_string(),
+      &NodeKey::HttpRequester(..) => "HttpRequester".to_string(),
     }
   }
 
@@ -1196,6 +1237,7 @@ impl NodeKey {
       | &NodeKey::Select { .. }
       | &NodeKey::Snapshot { .. }
       | &NodeKey::Task { .. }
+      | &NodeKey::HttpRequester { .. }
       | &NodeKey::DownloadedFile { .. } => None,
     }
   }
@@ -1244,6 +1286,7 @@ impl Node for NodeKey {
         NodeKey::Scandir(n) => n.run(context).map(NodeResult::from).to_boxed(),
         NodeKey::Select(n) => n.run(context).map(NodeResult::from).to_boxed(),
         NodeKey::Snapshot(n) => n.run(context).map(NodeResult::from).to_boxed(),
+        NodeKey::HttpRequester(n) => n.run(context).map(NodeResult::from).to_boxed(),
         NodeKey::Task(n) => n.run(context).map(NodeResult::from).to_boxed(),
       }
     })
@@ -1269,6 +1312,7 @@ impl Node for NodeKey {
       | NodeResult::LinkDest(_)
       | NodeResult::ProcessResult(_)
       | NodeResult::Snapshot(_)
+      | NodeResult::HttpResponse(_)
       | NodeResult::Value(_) => None,
     }
   }
@@ -1294,6 +1338,7 @@ impl Display for NodeKey {
       &NodeKey::ReadLink(ref s) => write!(f, "ReadLink({:?})", s.0),
       &NodeKey::Scandir(ref s) => write!(f, "Scandir({:?})", s.0),
       &NodeKey::Select(ref s) => write!(f, "Select({}, {})", s.params, s.product,),
+      &NodeKey::HttpRequester(_) => write!(f, "HttpRequester(TODO)"),
       &NodeKey::Task(ref s) => write!(f, "{:?}", s),
       &NodeKey::Snapshot(ref s) => write!(f, "Snapshot({})", format!("{}", &s.0)),
     }
@@ -1325,7 +1370,14 @@ pub enum NodeResult {
   LinkDest(LinkDest),
   ProcessResult(ProcessResult),
   Snapshot(Arc<store::Snapshot>),
+  HttpResponse(HttpResponse),
   Value(Value),
+}
+
+impl From<HttpResponse> for NodeResult {
+  fn from(r: HttpResponse) -> Self {
+    NodeResult::HttpResponse(r)
+  }
 }
 
 impl From<Value> for NodeResult {
@@ -1363,6 +1415,18 @@ impl From<Arc<DirectoryListing>> for NodeResult {
     NodeResult::DirectoryListing(v)
   }
 }
+
+impl TryFrom<NodeResult> for HttpResponse {
+  type Error = ();
+
+  fn try_from(nr: NodeResult) -> Result<Self, ()> {
+    match nr {
+      NodeResult::HttpResponse(r) => Ok(r),
+      _ => Err(()),
+    }
+  }
+}
+
 
 impl TryFrom<NodeResult> for Value {
   type Error = ();

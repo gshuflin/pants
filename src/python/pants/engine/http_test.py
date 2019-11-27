@@ -41,5 +41,5 @@ class HttpIntrinsicTest(TestBase):
       req = MakeHttpRequest()
       output, = self.scheduler.product_request(HttpResponse, subjects=[req])
       print(f"output: {output}")
-      self.assertEqual(1, 2)
+      assert 1 == 2
 
