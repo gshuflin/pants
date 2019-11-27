@@ -32,6 +32,7 @@ from pants.engine.fs import (
   Snapshot,
   UrlToFetch,
 )
+from pants.engine.http import HttpResponse, MakeHttpRequest
 from pants.engine.interactive_runner import InteractiveProcessRequest, InteractiveProcessResult
 from pants.engine.isolated_process import (
   FallibleExecuteProcessResult,
@@ -561,6 +562,7 @@ class EngineTypes(NamedTuple):
   construct_process_result: Function
   construct_materialize_directories_results: Function
   construct_materialize_directory_result: Function
+  construct_http_response: Function
   address: TypeId
   path_globs: TypeId
   directories_to_merge: TypeId
@@ -579,6 +581,8 @@ class EngineTypes(NamedTuple):
   construct_interactive_process_result: Function
   interactive_process_request: TypeId
   interactive_process_result: TypeId
+  make_http_request: TypeId
+  make_http_response: TypeId
 
 
 class PyResult(NamedTuple):
@@ -918,6 +922,7 @@ class Native(metaclass=SingletonMetaclass):
         construct_process_result=func(FallibleExecuteProcessResult),
         construct_materialize_directories_results=func(MaterializeDirectoriesResult),
         construct_materialize_directory_result=func(MaterializeDirectoryResult),
+        construct_http_response=func(HttpResponse),
         address=ti(Address),
         path_globs=ti(PathGlobs),
         directories_to_merge=ti(DirectoriesToMerge),
@@ -936,6 +941,8 @@ class Native(metaclass=SingletonMetaclass):
         construct_interactive_process_result=func(InteractiveProcessResult),
         interactive_process_request=ti(InteractiveProcessRequest),
         interactive_process_result=ti(InteractiveProcessResult),
+        make_http_request=ti(MakeHttpRequest),
+        make_http_response=ti(HttpResponse),
     )
 
     scheduler_result = self.lib.scheduler_create(
