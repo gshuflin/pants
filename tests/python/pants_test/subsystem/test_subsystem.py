@@ -9,6 +9,13 @@ from pants.subsystem.subsystem import Subsystem
 from pants.subsystem.subsystem_client_mixin import SubsystemClientMixin
 
 
+class WorkunitSubscriptableSubsystem(Subsystem):
+  options_scope = "dummy scope"
+
+  def handle_workunits(self, workunits):
+    print(f"Got workunits: {workunits}")
+
+
 class DummySubsystem(Subsystem):
   options_scope = 'dummy'
 
@@ -266,3 +273,10 @@ class SubsystemTest(unittest.TestCase):
 
     with self.assertRaises(SubsystemClientMixin.CycleException):
       list(SubsystemB.subsystem_closure_iter())
+
+
+  def test_streaming_workunit_callbacks_feature(self):
+    import_str = "foo"
+    callables_list = Subsystem.get_streaming_workunit_callbacks([import_str])
+    assert len(callables_list) == 1
+

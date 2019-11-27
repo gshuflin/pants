@@ -3,12 +3,16 @@
 
 import importlib
 import inspect
+import logging
 from typing import Callable, Dict, List, Optional, Tuple, Type, TypeVar, Union, cast
 
 from pants.option.optionable import Optionable
 from pants.option.options import Options
 from pants.option.scope import ScopeInfo
 from pants.subsystem.subsystem_client_mixin import SubsystemClientMixin, SubsystemDependency
+
+
+logger = logging.getLogger(__name__)
 
 
 class SubsystemError(Exception):
@@ -181,7 +185,7 @@ class Subsystem(SubsystemClientMixin, Optionable):
         class_name = name.split(".")[-1]
         module = importlib.import_module(module_name)
         subsystem_class = getattr(module, class_name)
-      except (IndexError, AttributeError) as e:
+      except (IndexError, AttributeError, ModuleNotFoundError, ValueError) as e:
         logger.warning(f"Invalid module name: {name}: {e}")
         continue
       except ImportError as e:
