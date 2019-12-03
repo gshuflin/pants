@@ -6,12 +6,12 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class HttpResponse:
-  pass
+  response_code: int
 
 
 @dataclass(frozen=True)
 class MakeHttpRequest:
-  pass
+  url: str
 
 
 def create_http_rules():

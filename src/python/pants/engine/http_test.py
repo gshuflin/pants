@@ -38,7 +38,7 @@ class HttpIntrinsicTest(TestBase):
     with http_server(HttpHandlerForTests) as port:
       url = f'http://localhost:{port}/'
 
-      req = MakeHttpRequest()
+      req = MakeHttpRequest(url="www.pantsbuild.org")
       output, = self.scheduler.product_request(HttpResponse, subjects=[req])
       print(f"output: {output}")
       assert 1 == 2

@@ -15,6 +15,7 @@ use futures::future::{self, Future};
 use futures::Stream;
 use url::Url;
 
+//use crate::http::{perform_http_request};
 use crate::context::{Context, Core};
 use crate::core::{throw, Failure, Key, Params, TypeId, Value};
 use crate::externs;
@@ -229,6 +230,25 @@ impl WrappedNode for Select {
             .to_boxed()
         }
         &Rule::Intrinsic(Intrinsic { product, input })
+          if product == types.http_response && input == types.make_http_request =>
+        {
+          let context = context.clone();
+          let core = context.core.clone();
+          self
+            .select_product(&context, types.make_http_request, "intrinsic")
+            .and_then(move |val: Value| context.get(HttpRequester(externs::key_for(val))))
+            .map(move |resp: HttpResponse| {
+              let output: Value = externs::unsafe_call(
+                &core.types.construct_http_response,
+                &[
+                  externs::store_u64(resp.response_code as u64),
+                ]
+              );
+              output
+            })
+          .to_boxed()
+        }
+        &Rule::Intrinsic(Intrinsic { product, input })
           if product == types.directory_digest && input == types.directories_to_merge =>
         {
           let request = self.select_product(&context, types.directories_to_merge, "intrinsic");
@@ -340,7 +360,7 @@ impl WrappedNode for Select {
           let core = context.core.clone();
           self
             .select_product(&context, types.multi_platform_process_request, "intrinsic")
-            .and_then(|request| {
+            .and_then(|request: Value| {
               MultiPlatformExecuteProcess::lift(&request).map_err(|str| {
                 throw(&format!(
                   "Error lifting MultiPlatformExecuteProcess: {}",
@@ -361,24 +381,6 @@ impl WrappedNode for Select {
               )
             })
             .to_boxed()
-        }
-        &Rule::Intrinsic(Intrinsic { product, input })
-          if product == types.http_response && input == types.make_http_request =>
-        {
-          let context = context.clone();
-          let core = context.core.clone();
-          self
-            .select_product(&context, types.make_http_request, "intrinsic")
-            .and_then(move |val| context.get(HttpRequester(externs::key_for(val))))
-            .map(move |_http_response: HttpResponse| {
-
-              let output: Value = externs::unsafe_call(
-                &core.types.construct_http_response,
-                &[]
-              );
-              output
-            })
-          .to_boxed()
         }
         &Rule::Intrinsic(i) => panic!("Unrecognized intrinsic: {:?}", i),
       },
@@ -409,13 +411,20 @@ impl From<HttpRequester> for NodeKey {
 }
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-pub struct HttpResponse;
+pub struct HttpResponse {
+  response_code: u16
+}
 
 impl WrappedNode for HttpRequester {
   type Item = HttpResponse;
 
   fn run(self, _context: Context) -> NodeFuture<HttpResponse> {
-    future::ok(HttpResponse).to_boxed()
+    let value = externs::val_for(&self.0);
+    let url = externs::project_str(&value, "url");
+    println!("url in http requester! {}", url);
+
+    let resp = HttpResponse { response_code: 501 };
+    future::ok(resp).to_boxed()
   }
 }
 
