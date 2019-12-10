@@ -50,6 +50,8 @@ pub struct EngineDisplay {
   terminal: Console,
   action_map: BTreeMap<String, String>,
   logs: VecDeque<String>,
+  stdout_msgs: VecDeque<String>,
+  stderr_msgs: VecDeque<String>,
   running: bool,
   cursor_start: (u16, u16),
   terminal_size: (u16, u16),
@@ -61,6 +63,14 @@ pub struct EngineDisplay {
 impl EngineDisplay {
   pub fn stdout_is_tty() -> bool {
     termion::is_tty(&stdout())
+  }
+
+  pub fn write_stdout(&mut self, msg: &str) {
+    self.stdout_msgs.push_back(msg.to_string());
+  }
+
+  pub fn write_stderr(&mut self, msg: &str) {
+    self.stderr_msgs.push_back(msg.to_string());
   }
 
   pub fn new(indent_level: u16) -> EngineDisplay {
@@ -79,6 +89,8 @@ impl EngineDisplay {
       // The reason this can't be capped to e.g. the starting size is because of resizing - we
       // want to be able to fill the entire screen if resized much larger than when we started.
       logs: VecDeque::with_capacity(500),
+      stdout_msgs: VecDeque::with_capacity(500),
+      stderr_msgs: VecDeque::with_capacity(500),
       running: false,
       // N.B. This will cause the screen to clear - but with some improved position
       // tracking logic we could avoid screen clearing in favor of using the value
@@ -208,6 +220,7 @@ impl EngineDisplay {
     let mut counter: usize = 0;
     for (n, log_entry) in printable_logs.iter().rev().enumerate() {
       counter += 1;
+
       let line_shortened_log_entry: String = format!(
         "{padding}{log_entry}",
         padding = self.padding,

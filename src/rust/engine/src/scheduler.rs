@@ -111,11 +111,17 @@ impl Session {
   }
 
   pub fn write_stdout(&self, msg: &str) {
-    print!(" {}", msg);
+    self.maybe_display().map(|display| {
+      let mut d = display.lock();
+      d.write_stdout(msg);
+    });
   }
 
   pub fn write_stderr(&self, msg: &str) {
-    eprint!("{}", msg);
+    self.maybe_display().map(|display| {
+      let mut d = display.lock();
+      d.write_stderr(msg);
+    });
   }
 }
 
