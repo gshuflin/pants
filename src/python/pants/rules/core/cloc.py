@@ -1,6 +1,7 @@
 # Copyright 2019 Pants project contributors (see CONTRIBUTORS.md).
 # Licensed under the Apache License, Version 2.0 (see LICENSE).
 
+import logging
 from dataclasses import dataclass
 from typing import Set
 
@@ -21,6 +22,8 @@ from pants.engine.legacy.graph import HydratedTargets, TransitiveHydratedTargets
 from pants.engine.rules import console_rule, rule
 from pants.engine.selectors import Get
 
+
+logger = logging.getLogger(__name__)
 
 @dataclass(frozen=True)
 class DownloadedClocScript:
@@ -56,6 +59,7 @@ class CountLinesOfCode(Goal):
 @console_rule
 async def run_cloc(console: Console, options: CountLinesOfCode.Options, cloc_script: DownloadedClocScript, specs: Specs) -> CountLinesOfCode:
   """Runs the cloc perl script in an isolated process"""
+  logger.info("Starting cloc rule")
 
   transitive = options.values.transitive
   ignored = options.values.ignored
@@ -67,6 +71,7 @@ async def run_cloc(console: Console, options: CountLinesOfCode.Options, cloc_scr
     targets = await Get(HydratedTargets, Specs, specs)
     all_target_adaptors = {t.adaptor for t in targets}
 
+  logger.info("After the first get")
   digests_to_merge = []
 
   source_paths: Set[str] = set()
@@ -98,6 +103,7 @@ async def run_cloc(console: Console, options: CountLinesOfCode.Options, cloc_scr
     f'--list-file={input_files_filename}', # Read an exhaustive list of files to process from this file.
   )
 
+  logger.info("Right before EPR")
   req = ExecuteProcessRequest(
     argv=cmd,
     input_files=digest,
@@ -105,13 +111,17 @@ async def run_cloc(console: Console, options: CountLinesOfCode.Options, cloc_scr
     description='cloc',
   )
 
+  logger.info("Right after EPR")
   exec_result = await Get(ExecuteProcessResult, ExecuteProcessRequest, req)
+  logger.info("FOOOOOO")
   files_content = await Get(FilesContent, Digest, exec_result.output_directory_digest)
 
+  logger.info("No more gets")
   file_outputs = {fc.path: fc.content.decode() for fc in files_content.dependencies}
 
   output = file_outputs[report_filename]
 
+  logger.info("JUst about t' print")
   for line in output.splitlines():
     console.print_stdout(line)
 
