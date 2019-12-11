@@ -43,6 +43,18 @@ enum Console {
   Pipe(Stdout),
 }
 
+#[derive(Clone)]
+struct PrintableMsg {
+  msg: String,
+  output: PrintableMsgOutput,
+}
+
+#[derive(Clone)]
+enum PrintableMsgOutput {
+  Stdout,
+  Stderr,
+}
+
 pub struct EngineDisplay {
   sigil: char,
   divider: String,
@@ -50,8 +62,7 @@ pub struct EngineDisplay {
   terminal: Console,
   action_map: BTreeMap<String, String>,
   logs: VecDeque<String>,
-  stdout_msgs: VecDeque<String>,
-  stderr_msgs: VecDeque<String>,
+  printable_msgs: VecDeque<PrintableMsg>,
   running: bool,
   cursor_start: (u16, u16),
   terminal_size: (u16, u16),
@@ -66,11 +77,17 @@ impl EngineDisplay {
   }
 
   pub fn write_stdout(&mut self, msg: &str) {
-    self.stdout_msgs.push_back(msg.to_string());
+    self.printable_msgs.push_back(PrintableMsg {
+      msg: msg.to_string(),
+      output: PrintableMsgOutput::Stdout,
+    });
   }
 
   pub fn write_stderr(&mut self, msg: &str) {
-    self.stderr_msgs.push_back(msg.to_string());
+    self.printable_msgs.push_back(PrintableMsg {
+      msg: msg.to_string(),
+      output: PrintableMsgOutput::Stderr,
+    });
   }
 
   pub fn new(indent_level: u16) -> EngineDisplay {
@@ -89,8 +106,7 @@ impl EngineDisplay {
       // The reason this can't be capped to e.g. the starting size is because of resizing - we
       // want to be able to fill the entire screen if resized much larger than when we started.
       logs: VecDeque::with_capacity(500),
-      stdout_msgs: VecDeque::with_capacity(500),
-      stderr_msgs: VecDeque::with_capacity(500),
+      printable_msgs: VecDeque::with_capacity(500),
       running: false,
       // N.B. This will cause the screen to clear - but with some improved position
       // tracking logic we could avoid screen clearing in favor of using the value
@@ -328,8 +344,10 @@ impl EngineDisplay {
     self.action_map.len()
   }
 
-  // Terminates the EngineDisplay and returns the cursor to a static position.
+  // Terminates the EngineDisplay, returns the cursor to a static position,
+  // and then prints all buffered stdout and stderr output.
   pub fn finish(&mut self) {
+    self.render(); //do one last render before quitting
     self.running = false;
     let current_pos = self.get_cursor_pos();
     let action_count = self.action_map.len() as u16;
@@ -342,5 +360,11 @@ impl EngineDisplay {
       ))
       .expect("could not write to terminal");
     self.stop_raw_mode().unwrap();
+    for PrintableMsg { msg, output } in self.printable_msgs.iter() {
+      match output {
+        PrintableMsgOutput::Stdout => print!("{}", msg),
+        PrintableMsgOutput::Stderr => eprint!("{}", msg),
+      }
+    }
   }
 }
