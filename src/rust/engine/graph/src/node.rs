@@ -38,6 +38,10 @@ pub trait Node: Clone + Debug + Display + Eq + Hash + Send + 'static {
   /// If the node result is cacheable, return true.
   ///
   fn cacheable(&self) -> bool;
+
+  fn display_info(&self) -> Option<String> {
+    None
+  }
 }
 
 pub trait NodeError: Clone + Debug + Eq + Send {

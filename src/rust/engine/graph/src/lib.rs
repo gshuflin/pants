@@ -570,7 +570,12 @@ impl<N: Node> InnerGraph<N> {
 
       if deps.peek().is_none() {
         // If the entry has no running deps, it is a leaf. Emit it.
-        res.insert(format!("{}", self.unsafe_entry_for_id(id).node()), duration);
+        let node = self.unsafe_entry_for_id(id).node();
+        let display_info = match node.display_info() {
+          Some(s) => s,
+          None => format!("{}", node),
+        };
+        let _ = res.insert(display_info, duration);
         if res.len() >= k {
           break;
         }
