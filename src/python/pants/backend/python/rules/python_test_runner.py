@@ -3,6 +3,7 @@
 
 from typing import Optional
 
+import pkg_resources
 from pants.backend.python.rules.inject_init import InjectedInitDigest
 from pants.backend.python.rules.pex import (
   CreatePex,
@@ -14,7 +15,7 @@ from pants.backend.python.subsystems.pytest import PyTest
 from pants.backend.python.subsystems.python_setup import PythonSetup
 from pants.backend.python.subsystems.subprocess_environment import SubprocessEncodingEnvironment
 from pants.build_graph.address import Address
-from pants.engine.fs import Digest, DirectoriesToMerge
+from pants.engine.fs import Digest, DirectoriesToMerge, InputFilesContent, FilesContent, FileContent
 from pants.engine.isolated_process import ExecuteProcessRequest, FallibleExecuteProcessResult
 from pants.engine.legacy.graph import BuildFileAddresses, HydratedTarget, TransitiveHydratedTargets
 from pants.engine.legacy.structs import PythonTestsAdaptor
@@ -22,6 +23,19 @@ from pants.engine.rules import UnionRule, optionable_rule, rule
 from pants.engine.selectors import Get, MultiGet
 from pants.rules.core.core_test_model import TestResult, TestTarget
 from pants.rules.core.strip_source_root import SourceRootStrippedSources
+
+def get_coverage_plugin_input():
+  return InputFilesContent(
+    FilesContent(
+      (
+        FileContent(
+          path='__coverage_coverage_plugin__.py',
+          content=pkg_resources.resource_string(__name__, 'coverage/plugin.py'),
+          is_executable=False,
+        ),
+      )
+    )
+  )
 
 
 def calculate_timeout_seconds(
@@ -103,6 +117,8 @@ async def run_python_test(
 
   inits_digest = await Get(InjectedInitDigest, Digest, sources_digest)
 
+  plugin_file_digest = await Get(Digest, InputFilesContent, get_coverage_plugin_input())
+
   merged_input_files = await Get(
     Digest,
     DirectoriesToMerge(
@@ -110,10 +126,14 @@ async def run_python_test(
         sources_digest,
         inits_digest.directory_digest,
         resolved_requirements_pex.directory_digest,
+        plugin_file_digest,
       )
     ),
   )
-
+  coverage_args = [
+    '--cov-report=',
+    '--cov', pytest.options.cov,
+  ]
   test_target_sources_file_names = sorted(source_root_stripped_test_target_sources.snapshot.files)
   timeout_seconds = calculate_timeout_seconds(
     timeouts_enabled=pytest.options.timeouts,
@@ -125,7 +145,7 @@ async def run_python_test(
     python_setup=python_setup,
     subprocess_encoding_environment=subprocess_encoding_environment,
     pex_path=f'./{output_pytest_requirements_pex_filename}',
-    pex_args=(*pytest.get_args(), *test_target_sources_file_names),
+    pex_args=(*pytest.get_args(), *coverage_args, *test_target_sources_file_names),
     input_files=merged_input_files,
     description=f'Run Pytest for {test_target.address.reference()}',
     timeout_seconds=timeout_seconds if timeout_seconds is not None else 9999
