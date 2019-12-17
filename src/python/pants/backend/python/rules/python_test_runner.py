@@ -2,7 +2,7 @@
 # Licensed under the Apache License, Version 2.0 (see LICENSE).
 
 import os
-from typing import Optional, List, Set
+from typing import List, Optional, Set
 
 import pkg_resources
 
@@ -41,7 +41,6 @@ def get_coverage_plugin_input():
   )
 
 
-<<<<<<< HEAD
 def calculate_timeout_seconds(
   *,
   timeouts_enabled: bool,
@@ -63,7 +62,7 @@ def calculate_timeout_seconds(
     return min(target_timeout, timeout_maximum)
   return target_timeout
 
-=======
+
 def get_packages_to_cover(coverage: str, source_root_stripped_file_paths: List[str]) -> Set[str]:
   if coverage == 'auto':
     return set(
@@ -71,7 +70,6 @@ def get_packages_to_cover(coverage: str, source_root_stripped_file_paths: List[s
       for source_root_stripped_source_file_path in source_root_stripped_file_paths
     )
   return set()
->>>>>>> coverage running.
 
 @rule(name="Run pytest")
 async def run_python_test(
@@ -145,14 +143,12 @@ async def run_python_test(
   )
 
   test_target_sources_file_names = sorted(source_root_stripped_test_target_sources.snapshot.files)
-<<<<<<< HEAD
   timeout_seconds = calculate_timeout_seconds(
     timeouts_enabled=pytest.options.timeouts,
     target_timeout=getattr(test_target, 'timeout', None),
     timeout_default=pytest.options.timeout_default,
     timeout_maximum=pytest.options.timeout_maximum,
   )
-=======
   coverage_args = []
   if pytest.options.coverage:
     packages_to_cover = get_packages_to_cover(
@@ -160,21 +156,29 @@ async def run_python_test(
       source_root_stripped_file_paths=test_target_sources_file_names,
     )
     coverage_args = [
-      '--cov-report=', # To not generate any output. https://pytest-cov.readthedocs.io/en/latest/config.html
+      '--cov-report=html', # To not generate any output. https://pytest-cov.readthedocs.io/en/latest/config.html
     ]
     for package in packages_to_cover:
       coverage_args.extend(['--cov', package])
->>>>>>> coverage running.
+
   request = resolved_requirements_pex.create_execute_request(
     python_setup=python_setup,
     subprocess_encoding_environment=subprocess_encoding_environment,
     pex_path=f'./{output_pytest_requirements_pex_filename}',
     pex_args=(*pytest.get_args(), *coverage_args, *test_target_sources_file_names),
     input_files=merged_input_files,
+    output_directories=('htmlcov',),
     description=f'Run Pytest for {test_target.address.reference()}',
     timeout_seconds=timeout_seconds if timeout_seconds is not None else 9999
   )
-  result = await Get(FallibleExecuteProcessResult, ExecuteProcessRequest, request)
+  # result = await Get(FallibleExecuteProcessResult, ExecuteProcessRequest, request)
+
+  result = await Get[FallibleExecuteProcessResult](
+    ExecuteProcessRequest,
+    request
+  )
+  # coverage_report_content = await Get[FilesContent](Digest, result.output_directory_digest)
+  # import pdb; pdb.set_trace()
   return TestResult.from_fallible_execute_process_result(result)
 
 
