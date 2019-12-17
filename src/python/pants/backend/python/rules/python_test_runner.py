@@ -1,9 +1,11 @@
 # Copyright 2018 Pants project contributors (see CONTRIBUTORS.md).
 # Licensed under the Apache License, Version 2.0 (see LICENSE).
 
-from typing import Optional
+import os
+from typing import Optional, List, Set
 
 import pkg_resources
+
 from pants.backend.python.rules.inject_init import InjectedInitDigest
 from pants.backend.python.rules.pex import (
   CreatePex,
@@ -15,7 +17,7 @@ from pants.backend.python.subsystems.pytest import PyTest
 from pants.backend.python.subsystems.python_setup import PythonSetup
 from pants.backend.python.subsystems.subprocess_environment import SubprocessEncodingEnvironment
 from pants.build_graph.address import Address
-from pants.engine.fs import Digest, DirectoriesToMerge, InputFilesContent, FilesContent, FileContent
+from pants.engine.fs import Digest, DirectoriesToMerge, FileContent, FilesContent, InputFilesContent
 from pants.engine.isolated_process import ExecuteProcessRequest, FallibleExecuteProcessResult
 from pants.engine.legacy.graph import BuildFileAddresses, HydratedTarget, TransitiveHydratedTargets
 from pants.engine.legacy.structs import PythonTestsAdaptor
@@ -23,6 +25,7 @@ from pants.engine.rules import UnionRule, optionable_rule, rule
 from pants.engine.selectors import Get, MultiGet
 from pants.rules.core.core_test_model import TestResult, TestTarget
 from pants.rules.core.strip_source_root import SourceRootStrippedSources
+
 
 def get_coverage_plugin_input():
   return InputFilesContent(
@@ -38,6 +41,7 @@ def get_coverage_plugin_input():
   )
 
 
+<<<<<<< HEAD
 def calculate_timeout_seconds(
   *,
   timeouts_enabled: bool,
@@ -59,6 +63,15 @@ def calculate_timeout_seconds(
     return min(target_timeout, timeout_maximum)
   return target_timeout
 
+=======
+def get_packages_to_cover(coverage: str, source_root_stripped_file_paths: List[str]) -> Set[str]:
+  if coverage == 'auto':
+    return set(
+      os.path.dirname(source_root_stripped_source_file_path).replace(os.sep, '.')
+      for source_root_stripped_source_file_path in source_root_stripped_file_paths
+    )
+  return set()
+>>>>>>> coverage running.
 
 @rule(name="Run pytest")
 async def run_python_test(
@@ -130,17 +143,28 @@ async def run_python_test(
       )
     ),
   )
-  coverage_args = [
-    '--cov-report=',
-    '--cov', pytest.options.cov,
-  ]
+
   test_target_sources_file_names = sorted(source_root_stripped_test_target_sources.snapshot.files)
+<<<<<<< HEAD
   timeout_seconds = calculate_timeout_seconds(
     timeouts_enabled=pytest.options.timeouts,
     target_timeout=getattr(test_target, 'timeout', None),
     timeout_default=pytest.options.timeout_default,
     timeout_maximum=pytest.options.timeout_maximum,
   )
+=======
+  coverage_args = []
+  if pytest.options.coverage:
+    packages_to_cover = get_packages_to_cover(
+      coverage='auto',
+      source_root_stripped_file_paths=test_target_sources_file_names,
+    )
+    coverage_args = [
+      '--cov-report=', # To not generate any output. https://pytest-cov.readthedocs.io/en/latest/config.html
+    ]
+    for package in packages_to_cover:
+      coverage_args.extend(['--cov', package])
+>>>>>>> coverage running.
   request = resolved_requirements_pex.create_execute_request(
     python_setup=python_setup,
     subprocess_encoding_environment=subprocess_encoding_environment,
