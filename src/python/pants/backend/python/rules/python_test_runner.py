@@ -1,7 +1,11 @@
 # Copyright 2018 Pants project contributors (see CONTRIBUTORS.md).
 # Licensed under the Apache License, Version 2.0 (see LICENSE).
 
+import configparser
+import json
 import os
+from io import StringIO
+from textwrap import dedent
 from typing import List, Optional, Set
 
 import pkg_resources
@@ -16,6 +20,7 @@ from pants.backend.python.rules.pex import (
 from pants.backend.python.subsystems.pytest import PyTest
 from pants.backend.python.subsystems.python_setup import PythonSetup
 from pants.backend.python.subsystems.subprocess_environment import SubprocessEncodingEnvironment
+from pants.base.build_environment import get_buildroot
 from pants.build_graph.address import Address
 from pants.engine.fs import Digest, DirectoriesToMerge, FileContent, FilesContent, InputFilesContent
 from pants.engine.isolated_process import ExecuteProcessRequest, FallibleExecuteProcessResult
@@ -27,13 +32,63 @@ from pants.rules.core.core_test_model import TestResult, TestTarget
 from pants.rules.core.strip_source_root import SourceRootStrippedSources
 
 
+COVERAGE_PLUGIN_MODULE_NAME = '__coverage_coverage_plugin__'
+
+DEFAULT_COVERAGE_CONFIG = dedent(f"""
+  [run]
+  branch = True
+  timid = False
+  """)
+
+
+def construct_coverage_config(source_root_stripped_sources: SourceRootStrippedSources):
+  config_parser = configparser.ConfigParser()
+  config_parser.read_file(StringIO(DEFAULT_COVERAGE_CONFIG))
+  ensure_section(config_parser, 'run')
+  config_parser.set('run', 'plugins', COVERAGE_PLUGIN_MODULE_NAME)
+
+  src_to_target_base = {}  # A map from source root stripped source to its source root. eg:
+  #  {'pants/testutil/subsystem/util.py': 'src/python'}
+  for source_root_stripped_source in source_root_stripped_sources:
+    for file in source_root_stripped_source.snapshot.files:
+      src_to_target_base[file] = 'src/python' # TODO actually get the real source root.
+
+  config_parser.add_section(COVERAGE_PLUGIN_MODULE_NAME)
+  config_parser.set(COVERAGE_PLUGIN_MODULE_NAME, 'buildroot', get_buildroot())
+  config_parser.set(COVERAGE_PLUGIN_MODULE_NAME, 'src_to_target_base', json.dumps(src_to_target_base))
+  # TODO: There has to be a better way to do this. At the very least this should be in a tmp file.
+  with open('src/python/pants/backend/python/rules/.coveragerc', 'w') as f:
+    config_parser.write(f)
+  return '.coveragerc'
+
+
+def ensure_section(config_parser: configparser, section: str) -> None:
+  """Ensure a section exists in a ConfigParser."""
+  if not config_parser.has_section(section):
+    config_parser.add_section(section)
+
+
 def get_coverage_plugin_input():
   return InputFilesContent(
     FilesContent(
       (
         FileContent(
-          path='__coverage_coverage_plugin__.py',
+          path=f'{COVERAGE_PLUGIN_MODULE_NAME}.py',
           content=pkg_resources.resource_string(__name__, 'coverage/plugin.py'),
+          is_executable=False,
+        ),
+      )
+    )
+  )
+
+
+def get_coveragerc_input(coveragerc_file_path):
+  return InputFilesContent(
+    FilesContent(
+      (
+        FileContent(
+          path='.coveragerc',
+          content=pkg_resources.resource_string(__name__, '.coveragerc'),
           is_executable=False,
         ),
       )
@@ -98,15 +153,18 @@ async def run_python_test(
     adaptors=all_target_adaptors,
     additional_requirements=pytest.get_requirement_strings()
   )
+  plugin_file_digest = await Get(Digest, InputFilesContent, get_coverage_plugin_input())
+
   resolved_requirements_pex = await Get(
     Pex, CreatePex(
       output_filename=output_pytest_requirements_pex_filename,
       requirements=requirements,
       interpreter_constraints=interpreter_constraints,
       entry_point="pytest:main",
+      input_files_digest=plugin_file_digest,
     )
   )
-
+  # import pdb; pdb.set_trace()
   # Get the file names for the test_target, adjusted for the source root. This allows us to
   # specify to Pytest which files to test and thus to avoid the test auto-discovery defined by
   # https://pytest.org/en/latest/goodpractices.html#test-discovery. In addition to a performance
@@ -129,6 +187,8 @@ async def run_python_test(
   inits_digest = await Get(InjectedInitDigest, Digest, sources_digest)
 
   plugin_file_digest = await Get(Digest, InputFilesContent, get_coverage_plugin_input())
+  coveragerc_file_path = construct_coverage_config(source_root_stripped_sources)
+  coveragerc_digest = await Get(Digest, InputFilesContent, get_coveragerc_input(coveragerc_file_path))
 
   merged_input_files = await Get(
     Digest,
@@ -137,7 +197,8 @@ async def run_python_test(
         sources_digest,
         inits_digest.directory_digest,
         resolved_requirements_pex.directory_digest,
-        plugin_file_digest,
+        # plugin_file_digest,
+        coveragerc_digest,
       )
     ),
   )
@@ -149,6 +210,8 @@ async def run_python_test(
     timeout_default=pytest.options.timeout_default,
     timeout_maximum=pytest.options.timeout_maximum,
   )
+
+
   coverage_args = []
   if pytest.options.coverage:
     packages_to_cover = get_packages_to_cover(
@@ -156,10 +219,11 @@ async def run_python_test(
       source_root_stripped_file_paths=test_target_sources_file_names,
     )
     coverage_args = [
-      '--cov-report=html', # To not generate any output. https://pytest-cov.readthedocs.io/en/latest/config.html
+      '--cov-report=', # To not generate any output. https://pytest-cov.readthedocs.io/en/latest/config.html
     ]
     for package in packages_to_cover:
       coverage_args.extend(['--cov', package])
+
 
   request = resolved_requirements_pex.create_execute_request(
     python_setup=python_setup,
@@ -167,18 +231,17 @@ async def run_python_test(
     pex_path=f'./{output_pytest_requirements_pex_filename}',
     pex_args=(*pytest.get_args(), *coverage_args, *test_target_sources_file_names),
     input_files=merged_input_files,
-    output_directories=('htmlcov',),
+    output_directories=('.coverage',),
     description=f'Run Pytest for {test_target.address.reference()}',
     timeout_seconds=timeout_seconds if timeout_seconds is not None else 9999
   )
-  # result = await Get(FallibleExecuteProcessResult, ExecuteProcessRequest, request)
 
   result = await Get[FallibleExecuteProcessResult](
     ExecuteProcessRequest,
     request
   )
   # coverage_report_content = await Get[FilesContent](Digest, result.output_directory_digest)
-  # import pdb; pdb.set_trace()
+  import pdb; pdb.set_trace()
   return TestResult.from_fallible_execute_process_result(result)
 
 
