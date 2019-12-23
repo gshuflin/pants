@@ -29,7 +29,10 @@ from pants.engine.legacy.structs import PythonTestsAdaptor
 from pants.engine.rules import UnionRule, optionable_rule, rule
 from pants.engine.selectors import Get, MultiGet
 from pants.rules.core.core_test_model import TestResult, TestTarget
-from pants.rules.core.strip_source_root import SourceRootStrippedSources
+from pants.rules.core.strip_source_root import (
+  SourceRootsAndSourceRootStrippedSources,
+  SourceRootStrippedSources,
+)
 
 
 COVERAGE_PLUGIN_MODULE_NAME = '__coverage_coverage_plugin__'
@@ -41,19 +44,31 @@ DEFAULT_COVERAGE_CONFIG = dedent(f"""
   """)
 
 
-def construct_coverage_config(source_root_stripped_sources: SourceRootStrippedSources) -> StringIO:
+def get_file_names(all_target_adaptors):
+  def iter_files():
+    for adaptor in all_target_adaptors:
+      if hasattr(adaptor, 'sources'):
+        for file in adaptor.sources.snapshot.files:
+          if file.endswith('.py'):
+            yield file
+
+  return list(iter_files())
+
+
+def construct_coverage_config(
+  source_roots_and_source_root_stripped_sources: SourceRootsAndSourceRootStrippedSources
+) -> StringIO:
   config_parser = configparser.ConfigParser()
   config_parser.read_file(StringIO(DEFAULT_COVERAGE_CONFIG))
   ensure_section(config_parser, 'run')
   config_parser.set('run', 'plugins', COVERAGE_PLUGIN_MODULE_NAME)
-
-  src_to_target_base = {}  # A map from source root stripped source to its source root. eg:
+  # A map from source root stripped source to its source root. eg:
   #  {'pants/testutil/subsystem/util.py': 'src/python'}
-  for source_root_stripped_source in source_root_stripped_sources:
-    for file in source_root_stripped_source.snapshot.files:
-      if file.endswith('.py'):
-        src_to_target_base[file] = 'src/python' # TODO actually get the real source root.
-
+  # This is so coverage reports referencing /tmp/alksdjfiwe/pants/testutil/subsystem/util.py can be mapped
+  # back to the actual sources they reference when merging coverage reports.
+  src_to_target_base = {
+    source.source_path: source.source_root for source in source_roots_and_source_root_stripped_sources
+  }
   config_parser.add_section(COVERAGE_PLUGIN_MODULE_NAME)
   config_parser.set(COVERAGE_PLUGIN_MODULE_NAME, 'buildroot', get_buildroot())
   config_parser.set(COVERAGE_PLUGIN_MODULE_NAME, 'src_to_target_base', json.dumps(src_to_target_base))
@@ -176,6 +191,8 @@ async def run_python_test(
     for hydrated_target in all_targets
   )
 
+
+
   stripped_sources_digests = tuple(
     stripped_sources.snapshot.directory_digest for stripped_sources in source_root_stripped_sources
   )
@@ -185,7 +202,12 @@ async def run_python_test(
 
   plugin_file_digest = await Get(Digest, InputFilesContent, get_coverage_plugin_input())
 
-  coverage_config_content = construct_coverage_config(source_root_stripped_sources)
+  file_names = get_file_names(all_target_adaptors)
+  source_roots_and_source_root_stripped_sources = await MultiGet(
+    Get(SourceRootsAndSourceRootStrippedSources, str, file_name)
+    for file_name in file_names
+  )
+  coverage_config_content = construct_coverage_config(source_roots_and_source_root_stripped_sources)
   coveragerc_digest = await Get(Digest, InputFilesContent, get_coveragerc_input(coverage_config_content))
 
   merged_input_files = await Get(
