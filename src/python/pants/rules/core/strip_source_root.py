@@ -72,6 +72,7 @@ async def split_source_root(
     source_path=file_name[len(source_root.path) + 1:]
   )
 
+
 def rules():
   return [
     strip_source_root,
