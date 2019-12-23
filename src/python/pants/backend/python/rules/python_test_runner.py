@@ -9,7 +9,7 @@ from textwrap import dedent
 from typing import List, Optional, Set
 
 import pkg_resources
-from pants.util.contextutil import temporary_file_path
+
 from pants.backend.python.rules.inject_init import InjectedInitDigest
 from pants.backend.python.rules.pex import (
   CreatePex,
@@ -30,7 +30,6 @@ from pants.engine.rules import UnionRule, optionable_rule, rule
 from pants.engine.selectors import Get, MultiGet
 from pants.rules.core.core_test_model import TestResult, TestTarget
 from pants.rules.core.strip_source_root import SourceRootStrippedSources
-from io import StringIO
 
 
 COVERAGE_PLUGIN_MODULE_NAME = '__coverage_coverage_plugin__'
@@ -42,10 +41,7 @@ DEFAULT_COVERAGE_CONFIG = dedent(f"""
   """)
 
 
-def construct_coverage_config(
-  source_root_stripped_sources: SourceRootStrippedSources,
-  coveragerc_file_path: str
-):
+def construct_coverage_config(source_root_stripped_sources: SourceRootStrippedSources) -> StringIO:
   config_parser = configparser.ConfigParser()
   config_parser.read_file(StringIO(DEFAULT_COVERAGE_CONFIG))
   ensure_section(config_parser, 'run')
@@ -55,7 +51,8 @@ def construct_coverage_config(
   #  {'pants/testutil/subsystem/util.py': 'src/python'}
   for source_root_stripped_source in source_root_stripped_sources:
     for file in source_root_stripped_source.snapshot.files:
-      src_to_target_base[file] = 'src/python' # TODO actually get the real source root. Also, limit these to only files ending in `.py`
+      if file.endswith('.py'):
+        src_to_target_base[file] = 'src/python' # TODO actually get the real source root.
 
   config_parser.add_section(COVERAGE_PLUGIN_MODULE_NAME)
   config_parser.set(COVERAGE_PLUGIN_MODULE_NAME, 'buildroot', get_buildroot())
@@ -122,6 +119,7 @@ def calculate_timeout_seconds(
 
 
 def get_packages_to_cover(coverage: str, source_root_stripped_file_paths: List[str]) -> Set[str]:
+  # TODO: Support values other than 'auto'
   if coverage == 'auto':
     return set(
       os.path.dirname(source_root_stripped_source_file_path).replace(os.sep, '.')
@@ -186,59 +184,59 @@ async def run_python_test(
   inits_digest = await Get(InjectedInitDigest, Digest, sources_digest)
 
   plugin_file_digest = await Get(Digest, InputFilesContent, get_coverage_plugin_input())
-  with temporary_file_path() as coveragerc_file_path:
-    coverage_config_content = construct_coverage_config(source_root_stripped_sources, coveragerc_file_path)
-    coveragerc_digest = await Get(Digest, InputFilesContent, get_coveragerc_input(coverage_config_content))
 
-    merged_input_files = await Get(
-      Digest,
-      DirectoriesToMerge(
-        directories=(
-          sources_digest,
-          inits_digest.directory_digest,
-          resolved_requirements_pex.directory_digest,
-          coveragerc_digest,
-        )
-      ),
-    )
+  coverage_config_content = construct_coverage_config(source_root_stripped_sources)
+  coveragerc_digest = await Get(Digest, InputFilesContent, get_coveragerc_input(coverage_config_content))
 
-    test_target_sources_file_names = sorted(source_root_stripped_test_target_sources.snapshot.files)
-    timeout_seconds = calculate_timeout_seconds(
-      timeouts_enabled=pytest.options.timeouts,
-      target_timeout=getattr(test_target, 'timeout', None),
-      timeout_default=pytest.options.timeout_default,
-      timeout_maximum=pytest.options.timeout_maximum,
-    )
-
-
-    coverage_args = []
-    if pytest.options.coverage:
-      packages_to_cover = get_packages_to_cover(
-        coverage='auto', # TODO: respect the actual option.
-        source_root_stripped_file_paths=test_target_sources_file_names,
+  merged_input_files = await Get(
+    Digest,
+    DirectoriesToMerge(
+      directories=(
+        sources_digest,
+        inits_digest.directory_digest,
+        resolved_requirements_pex.directory_digest,
+        coveragerc_digest,
       )
-      coverage_args = [
-        '--cov-report=', # To not generate any output. https://pytest-cov.readthedocs.io/en/latest/config.html
-      ]
-      for package in packages_to_cover:
-        coverage_args.extend(['--cov', package])
+    ),
+  )
+
+  test_target_sources_file_names = sorted(source_root_stripped_test_target_sources.snapshot.files)
+  timeout_seconds = calculate_timeout_seconds(
+    timeouts_enabled=pytest.options.timeouts,
+    target_timeout=getattr(test_target, 'timeout', None),
+    timeout_default=pytest.options.timeout_default,
+    timeout_maximum=pytest.options.timeout_maximum,
+  )
 
 
-    request = resolved_requirements_pex.create_execute_request(
-      python_setup=python_setup,
-      subprocess_encoding_environment=subprocess_encoding_environment,
-      pex_path=f'./{output_pytest_requirements_pex_filename}',
-      pex_args=(*pytest.get_args(), *coverage_args, *test_target_sources_file_names),
-      input_files=merged_input_files,
-      output_directories=('.coverage',),
-      description=f'Run Pytest for {test_target.address.reference()}',
-      timeout_seconds=timeout_seconds if timeout_seconds is not None else 9999
+  coverage_args = []
+  if pytest.options.coverage:
+    packages_to_cover = get_packages_to_cover(
+      coverage='auto', # TODO: respect the actual option.
+      source_root_stripped_file_paths=test_target_sources_file_names,
     )
+    coverage_args = [
+      '--cov-report=', # To not generate any output. https://pytest-cov.readthedocs.io/en/latest/config.html
+    ]
+    for package in packages_to_cover:
+      coverage_args.extend(['--cov', package])
 
-    result = await Get[FallibleExecuteProcessResult](
-      ExecuteProcessRequest,
-      request
-    )
+
+  request = resolved_requirements_pex.create_execute_request(
+    python_setup=python_setup,
+    subprocess_encoding_environment=subprocess_encoding_environment,
+    pex_path=f'./{output_pytest_requirements_pex_filename}',
+    pex_args=(*pytest.get_args(), *coverage_args, *test_target_sources_file_names),
+    input_files=merged_input_files,
+    output_directories=('.coverage',),
+    description=f'Run Pytest for {test_target.address.reference()}',
+    timeout_seconds=timeout_seconds if timeout_seconds is not None else 9999
+  )
+
+  result = await Get[FallibleExecuteProcessResult](
+    ExecuteProcessRequest,
+    request
+  )
   return TestResult.from_fallible_execute_process_result(result)
 
 
