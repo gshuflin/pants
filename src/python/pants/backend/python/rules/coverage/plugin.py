@@ -60,6 +60,9 @@ class ChrootRemappingPlugin(CoveragePlugin):
     self._src_chroot_path = src_chroot_path
     self._src_to_target_base = src_to_target_base
     self._target_bases = set(self._src_to_target_base.values())
+    self._real_chroot_path = os.path.realpath(src_chroot_path)
+    assert self._src_chroot_path == self._real_chroot_path
+
 
   def find_executable_files(self, top):
     # coverage uses this to associate files with this plugin.

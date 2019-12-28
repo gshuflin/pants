@@ -57,7 +57,7 @@ def get_file_names(all_target_adaptors):
 
 def construct_coverage_config(
   source_roots_and_source_root_stripped_sources: SourceRootsAndSourceRootStrippedSources
-) -> StringIO:
+) -> bytes:
   config_parser = configparser.ConfigParser()
   config_parser.read_file(StringIO(DEFAULT_COVERAGE_CONFIG))
   ensure_section(config_parser, 'run')
@@ -74,7 +74,7 @@ def construct_coverage_config(
   config_parser.set(COVERAGE_PLUGIN_MODULE_NAME, 'src_to_target_base', json.dumps(src_to_target_base))
   config = StringIO()
   config_parser.write(config)
-  return config
+  return config.getvalue().encode()
 
 
 def ensure_section(config_parser: configparser, section: str) -> None:
@@ -97,17 +97,15 @@ def get_coverage_plugin_input():
   )
 
 
-def get_coveragerc_input(coveragerc_content):
+def get_coveragerc_input(coveragerc_content: bytes):
   return InputFilesContent(
-    FilesContent(
-      (
-        FileContent(
-          path='.coveragerc',
-          content=coveragerc_content,
-          is_executable=False,
-        ),
-      )
-    )
+    [
+      FileContent(
+        path='.coveragerc',
+        content=coveragerc_content,
+        is_executable=False,
+      ),
+    ]
   )
 
 
@@ -200,15 +198,14 @@ async def run_python_test(
 
   inits_digest = await Get(InjectedInitDigest, Digest, sources_digest)
 
-  plugin_file_digest = await Get(Digest, InputFilesContent, get_coverage_plugin_input())
-
   file_names = get_file_names(all_target_adaptors)
   source_roots_and_source_root_stripped_sources = await MultiGet(
     Get(SourceRootsAndSourceRootStrippedSources, str, file_name)
     for file_name in file_names
   )
+
   coverage_config_content = construct_coverage_config(source_roots_and_source_root_stripped_sources)
-  coveragerc_digest = await Get(Digest, InputFilesContent, get_coveragerc_input(coverage_config_content))
+  coveragerc_digest = await Get[Digest](InputFilesContent, get_coveragerc_input(coverage_config_content))
 
   merged_input_files = await Get(
     Digest,
@@ -229,7 +226,6 @@ async def run_python_test(
     timeout_default=pytest.options.timeout_default,
     timeout_maximum=pytest.options.timeout_maximum,
   )
-
 
   coverage_args = []
   if pytest.options.coverage:
@@ -254,7 +250,6 @@ async def run_python_test(
     description=f'Run Pytest for {test_target.address.reference()}',
     timeout_seconds=timeout_seconds if timeout_seconds is not None else 9999
   )
-
   result = await Get[FallibleExecuteProcessResult](
     ExecuteProcessRequest,
     request
