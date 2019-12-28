@@ -102,7 +102,7 @@ def get_coveragerc_input(coveragerc_content: bytes):
     [
       FileContent(
         path='.coveragerc',
-        content=coveragerc_content,
+        content='coveragerc_content',
         is_executable=False,
       ),
     ]

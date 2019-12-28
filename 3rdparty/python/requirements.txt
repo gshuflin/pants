@@ -2,7 +2,7 @@ ansicolors==1.1.8
 beautifulsoup4>=4.6.0,<4.7
 cffi==1.13.2
 contextlib2==0.5.5
-coverage>=4.5,<4.6
+coverage==5.0.0
 # TODO remove this pin once we resolve https://github.com/pantsbuild/pants/issues/8502
 cryptography==2.7
 dataclasses==0.6
