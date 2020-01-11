@@ -41,6 +41,24 @@ pub struct WorkUnit {
   pub parent_id: Option<String>,
 }
 
+pub struct StartedWorkUnit {
+  pub name: String,
+  pub start_time: std::time::SystemTime,
+  pub span_id: String,
+  pub parent_id: Option<String>,
+}
+
+impl StartedWorkUnit {
+  pub fn finish(self) -> WorkUnit {
+    WorkUnit {
+      name: self.name,
+      time_span: TimeSpan::since(&self.start_time),
+      span_id: self.span_id,
+      parent_id: self.parent_id
+    }
+  }
+}
+
 impl WorkUnit {
   pub fn new(name: String, time_span: TimeSpan, parent_id: Option<String>) -> WorkUnit {
     let span_id = generate_random_64bit_string();
