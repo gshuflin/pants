@@ -128,7 +128,8 @@ class LocalPantsRunner(ExceptionSink.AccessGlobalExiterMixin):
       # be merged with the zipkin_trace_v2 flag, since they both involve most
       # of the same engine functionality, but for now is separate to avoid
       # breaking functionality associated with zipkin tracing while iterating on streaming workunit reporting.
-      stream_workunits = len(options.for_global_scope().streaming_workunits_handlers) != 0
+      #stream_workunits = len(options.for_global_scope().streaming_workunits_handlers) != 0
+      stream_workunits = True
       graph_session = graph_scheduler_helper.new_session(zipkin_trace_v2, RunTracker.global_instance().run_id, v2_ui, should_report_workunits=stream_workunits)
     return graph_session, graph_session.scheduler_session
 
@@ -356,8 +357,17 @@ class LocalPantsRunner(ExceptionSink.AccessGlobalExiterMixin):
     global_options = self._options.for_global_scope()
 
     streaming_handlers = global_options.streaming_workunits_handlers
-    report_interval = global_options.streaming_workunits_report_interval
-    callbacks = Subsystem.get_streaming_workunit_callbacks(streaming_handlers)
+    #report_interval = global_options.streaming_workunits_report_interval
+    #callbacks = Subsystem.get_streaming_workunit_callbacks(streaming_handlers)
+    report_interval = 1
+    def debug_workunit(**kwargs):
+      workunits = kwargs['workunits']
+      for workunit in workunits:
+        name = workunit['name']
+        span_id = workunit['span_id']
+        parent_id = workunit.get('parent_id')
+        print(f"Workunit: {name[0:15]} id: {span_id}  parent: {parent_id}")
+    callbacks = (debug_workunit,)
     streaming_reporter = StreamingWorkunitHandler(self._scheduler_session, callbacks=callbacks, report_interval_seconds=report_interval)
 
     help_output = self._maybe_handle_help()
