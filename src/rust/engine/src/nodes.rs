@@ -149,6 +149,11 @@ impl Select {
     let context = context.clone();
     Select::new_from_edges(self.params.clone(), product, &try_future!(edges)).run(context.clone())
   }
+
+  fn handle_intrinsic(self, input: TypeId, product: TypeId) -> () {
+
+
+  }
 }
 
 // TODO: This is a Node only because it is used as a root in the graph, but it should never be
@@ -169,6 +174,9 @@ impl WrappedNode for Select {
           task: task.clone(),
           entry: Arc::new(self.entry.clone()),
         }),
+        &Rule::Intrinsic(Intrinsic { product, input }) => {
+          self.handle_intrinsic(input, product)
+        },
         &Rule::Intrinsic(Intrinsic { product, input })
           if product == types.directory_digest && input == types.input_files_content =>
         {
