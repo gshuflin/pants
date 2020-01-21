@@ -24,6 +24,7 @@ from pants.engine.fs import (
   PathGlobs,
   PathGlobsAndRoot,
   Snapshot,
+  SnapshotSubset,
   UrlToFetch,
   create_fs_rules,
 )
@@ -597,6 +598,8 @@ class FSTest(TestBase, SchedulerTestBase, metaclass=ABCMeta):
           82
         ))
 
+  def test_snapshot_subset(self):
+    pass
 
 class StubHandler(BaseHTTPRequestHandler):
   response_text = b"www.pantsbuild.org"
