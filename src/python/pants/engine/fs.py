@@ -188,6 +188,7 @@ class Snapshot:
     return self == EMPTY_SNAPSHOT
 
 
+@dataclass(frozen=True)
 class SnapshotSubset:
   """A request to create a subset of a snapshot."""
   directory_digest: Digest
@@ -327,4 +328,5 @@ def create_fs_rules():
     RootRule(DirectoryWithPrefixToStrip),
     RootRule(DirectoryWithPrefixToAdd),
     RootRule(UrlToFetch),
+    RootRule(SnapshotSubset),
   ]
