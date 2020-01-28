@@ -540,9 +540,9 @@ impl PathGlobs {
       match self.matches(&[path.clone()]) {
         Ok(true) => {
           output.push(path);
-        },
+        }
         Ok(false) => (),
-        Err(e) => return Err(e)
+        Err(e) => return Err(e),
       }
     }
     Ok(output)
