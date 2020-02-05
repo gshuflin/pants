@@ -45,11 +45,9 @@ async def repl(
     build_root: BuildRoot,
     global_options: GlobalOptions) -> Repl:
 
-  print(f"Hydrated targets: {targets.dependencies}")
-
   repl_binary = await Get[ReplBinary](HydratedTarget, targets.dependencies[0])
 
-  with temporary_dir(root_dir=global_options.pants_workdir, cleanup=True) as tmpdir:
+  with temporary_dir(root_dir=global_options.pants_workdir, cleanup=False) as tmpdir:
     path_relative_to_build_root = str(Path(tmpdir).relative_to(build_root.path))
     workspace.materialize_directory(
       DirectoryToMaterialize(repl_binary.digest, path_prefix=path_relative_to_build_root)
@@ -58,9 +56,13 @@ async def repl(
     full_path = str(Path(tmpdir, repl_binary.name))
     run_request = InteractiveProcessRequest(
       argv=(full_path,),
+      #argv=("/usr/bin/exa", ".pants.d"),
       run_in_workspace=True,
     )
   result = runner.run_local_interactive_process(run_request)
+
+  #TODO
+  console.write_stdout("REPL exited successfully")
   return Repl(result.process_exit_code)
 
 
