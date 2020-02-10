@@ -31,6 +31,7 @@ from pants.rules.core.test import Status, TestDebugRequest, TestOptions, TestRes
 from pants.testutil.interpreter_selection_utils import skip_unless_python27_and_python3_present
 from pants.testutil.option.util import create_options_bootstrapper
 from pants.testutil.test_base import TestBase
+from pants.engine.mapper import AddressMapper
 
 
 class PythonTestRunnerIntegrationTest(TestBase):
