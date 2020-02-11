@@ -41,30 +41,21 @@ class PythonReplTest(GoalRuleTestBase):
 
     return (
       *super().rules(),
-      *create_legacy_graph_tasks(),
-      *inject_init.rules(),
-      *create_fs_rules(),
-      *create_interactive_runner_rules(),
-      *create_process_rules(),
-      *create_platform_rules(),
-      *strip_source_root.rules(),
-      *create_options_parsing_rules(),
-      *structs_rules(),
-      *changed_rules(),
       *repl.rules(),
+      *download_pex_bin.rules(),
+      *inject_init.rules(),
       *pex.rules(),
       *pex_from_target_closure.rules(),
       *prepare_chrooted_python_sources.rules(),
+      *python_native_code.rules(),
+      *strip_source_root.rules(),
       *subprocess_environment.rules(),
-      *download_pex_bin.rules(),
-      RootRule(BuildRoot),
     )
 
   def test_repl_with_targets(self):
 
     additional_params = [
       InteractiveRunner(self.scheduler),
-      BuildRoot(),
     ]
 
     self.execute_rule(args=["src/python:some_lib"], additional_params=additional_params)
