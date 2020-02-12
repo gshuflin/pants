@@ -78,7 +78,7 @@ class LibcObjects:
 
 class LinkerWrapperMixin:
 
-  def for_compiler(self, compiler, platform):
+  def for_compiler(self, compiler):
     """Return a Linker object which is intended to be compatible with the given `compiler`."""
     return (self.linker
             # TODO(#6143): describe why the compiler needs to be first on the PATH!
@@ -212,7 +212,7 @@ async def select_llvm_c_toolchain(platform: Platform, native_toolchain: NativeTo
   ])
 
   llvm_linker_wrapper = await Get[LLVMLinker](NativeToolchain, native_toolchain)
-  working_linker = llvm_linker_wrapper.for_compiler(working_c_compiler, platform)
+  working_linker = llvm_linker_wrapper.for_compiler(working_c_compiler)
 
   return LLVMCToolchain(CToolchain(working_c_compiler, working_linker))
 
@@ -256,7 +256,7 @@ async def select_llvm_cpp_toolchain(
 
   llvm_linker_wrapper = await Get[LLVMLinker](NativeToolchain, native_toolchain)
   working_linker = (llvm_linker_wrapper
-                    .for_compiler(working_cpp_compiler, platform)
+                    .for_compiler(working_cpp_compiler)
                     .append_field('linking_library_dirs', extra_llvm_linking_library_dirs)
                     .prepend_field('extra_args', linker_extra_args))
 
@@ -283,7 +283,7 @@ async def select_gcc_c_toolchain(platform: Platform, native_toolchain: NativeToo
   ])
 
   gcc_linker_wrapper = await Get[GCCLinker](NativeToolchain, native_toolchain)
-  working_linker = gcc_linker_wrapper.for_compiler(working_c_compiler, platform)
+  working_linker = gcc_linker_wrapper.for_compiler(working_c_compiler)
 
   return GCCCToolchain(CToolchain(working_c_compiler, working_linker))
 
@@ -317,7 +317,7 @@ async def select_gcc_cpp_toolchain(
   ])
 
   gcc_linker_wrapper = await Get[GCCLinker](NativeToolchain, native_toolchain)
-  working_linker = gcc_linker_wrapper.for_compiler(working_cpp_compiler, platform)
+  working_linker = gcc_linker_wrapper.for_compiler(working_cpp_compiler)
 
   return GCCCppToolchain(CppToolchain(working_cpp_compiler, working_linker))
 
