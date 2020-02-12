@@ -81,6 +81,7 @@ class Pex(HermeticPex):
   """Wrapper for a digest containing a pex file created with some filename."""
   directory_digest: Digest
   output_filename: str
+  platform: Platform
 
 
 # TODO: This is non-hermetic because the requirements will be resolved on the fly by
@@ -141,7 +142,11 @@ async def create_pex(
     MultiPlatformExecuteProcessRequest,
     execute_process_request
   )
-  return Pex(directory_digest=result.output_directory_digest, output_filename=request.output_filename)
+  return Pex(
+    directory_digest=result.output_directory_digest,
+    output_filename=request.output_filename,
+    platform=platform
+  )
 
 
 def rules():
