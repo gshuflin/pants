@@ -29,17 +29,25 @@ def get_os_name(uname_result: Optional[posix.uname_result] = None) -> str:
   return uname_result[0].lower()
 
 
-def normalize_os_name(os_name: str) -> str:
-  """
-  :API: public
-  """
+def normalize_os_name_or_none(os_name: str) -> Optional[str]:
   if os_name not in OS_ALIASES:
     for proper_name, aliases in OS_ALIASES.items():
       if os_name in aliases:
         return proper_name
+  return None
+
+
+def normalize_os_name(os_name: str) -> str:
+  """
+  :API: public
+  """
+  normalized = normalize_os_name_or_none(os_name)
+  if normalized is None:
     logger.warning('Unknown operating system name: {bad}, known names are: {known}'
-                   .format(bad=os_name, known=', '.join(sorted(known_os_names()))))
-  return os_name
+                  .format(bad=os_name, known=', '.join(sorted(known_os_names()))))
+    return os_name
+  else:
+    return normalized
 
 
 def get_normalized_os_name() -> str:

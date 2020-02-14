@@ -10,6 +10,7 @@ from pants.engine.fs import Digest, DirectoriesToMerge, DirectoryToMaterialize, 
 from pants.engine.goal import Goal, GoalSubsystem, LineOriented
 from pants.engine.legacy.graph import HydratedTarget
 from pants.engine.objects import union
+from pants.engine.platform import Platform
 from pants.engine.rules import goal_rule, rule
 from pants.engine.selectors import Get, MultiGet
 from pants.rules.core.distdir import DistDir
@@ -33,6 +34,14 @@ class BinaryOptions(LineOriented, GoalSubsystem):
 
   required_union_implementations = (BinaryTarget,)
 
+  @classmethod
+  def register_options(cls, register) -> None:
+    super().register_options(register)
+    register(
+      '--platform', type=str, advanced=True, default=None, fingerprint=True,
+      help="Build a binary for a given platform. If not specified it will default to the current platform."
+    )
+
 
 class Binary(Goal):
   subsystem_cls = BinaryOptions
@@ -47,6 +56,17 @@ async def create_binary(
   distdir: DistDir,
 ) -> Binary:
   with options.line_oriented(console) as print_stdout:
+
+    if options.value.platform is None:
+      platform = Platform.current()
+    else:
+      platform = Platform.from_str(options.value.platform)
+
+    if platform is None:
+      print_stdout(f"Invalid --platform option: {}", options.value.platform)
+      return Binary(exit_code=1)
+
+    print_stdout(f"Platform: {options.values.platform}")
     print_stdout(f"Generating binaries in `./{distdir.relpath}`")
     binaries = await MultiGet(Get[CreatedBinary](Address, address) for address in addresses)
     merged_digest = await Get[Digest](

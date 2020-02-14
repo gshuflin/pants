@@ -6,7 +6,7 @@ from typing import Callable, List
 
 from pants.engine.rules import rule
 from pants.util.memo import memoized_classproperty
-from pants.util.osutil import get_normalized_os_name
+from pants.util.osutil import get_normalized_os_name, normalize_os_name_or_none
 
 
 class Platform(Enum):
@@ -17,6 +17,14 @@ class Platform(Enum):
   @memoized_classproperty
   def current(cls) -> 'Platform':
     return Platform(get_normalized_os_name())
+
+  @classmethod
+  def from_str(s: str) -> Optional[Platform]:
+    normalized = normalize_os_name_or_none(s)
+    if normalized is None:
+      return None
+    else:
+      return Platform(normalized)
 
 
 class PlatformConstraint(Enum):
