@@ -5,7 +5,7 @@ import os
 from dataclasses import dataclass
 from typing import Dict, Optional, Sequence, Set, Tuple
 
-from pants.base.project_tree_factory import get_project_tree
+from pants.base.project_tree import get_project_tree
 from pants.engine.objects import Collection
 from pants.subsystem.subsystem import Subsystem
 from pants.util.memo import memoized_method, memoized_property

@@ -10,8 +10,15 @@ from pathspec.pathspec import PathSpec
 from pathspec.patterns.gitwildmatch import GitWildMatchPattern
 
 from pants.util.dirutil import fast_relpath
+from pants.util.memo import memoized
 
 logger = logging.getLogger(__name__)
+
+@memoized
+def get_project_tree(options):
+    """Creates the project tree for build files for use in a given pants run."""
+    pants_ignore = options.pants_ignore or []
+    return FileSystemProjectTree(get_buildroot(), pants_ignore)
 
 
 class ProjectTree(ABC):
