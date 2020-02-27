@@ -412,6 +412,7 @@ class TestBase(unittest.TestCase, metaclass=ABCMeta):
         # `cls.alias_groups` rather than having them be provided by bootstrap options.
         graph_session = EngineInitializer.setup_legacy_graph_extended(
             pants_ignore_patterns=[],
+            use_gitignore=False,
             local_store_dir=local_store_dir,
             build_file_imports_behavior=BuildFileImportsBehavior.error,
             native=init_native(),

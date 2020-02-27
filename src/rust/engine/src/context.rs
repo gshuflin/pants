@@ -60,6 +60,7 @@ impl Core {
     types: Types,
     build_root: PathBuf,
     ignore_patterns: &[String],
+    use_gitignore: bool,
     local_store_dir: PathBuf,
     remote_execution: bool,
     remote_store_servers: Vec<String>,
@@ -221,6 +222,8 @@ impl Core {
 
     let http_client = reqwest::r#async::Client::new();
     let rule_graph = RuleGraph::new(tasks.as_map(), root_subject_types);
+
+    println!("Initializing Core with use_gitignore: {}", use_gitignore);
 
     Ok(Core {
       graph: Graph::new(),
