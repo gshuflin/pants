@@ -145,6 +145,19 @@ impl GitignoreStyleExcludes {
     }))
   }
 
+  #[allow(dead_code)]
+  fn create_with_gitignore(patterns: &[String]) -> Result<Arc<Self>, String> {
+
+    let gitignore = Self::create_gitignore(patterns)
+      .map_err(|e| format!("Could not parse glob excludes {:?}: {:?}", patterns, e))?;
+
+    Ok(Arc::new(Self {
+      patterns: patterns.to_vec(),
+      gitignore,
+    }))
+
+  }
+
   fn create_gitignore(patterns: &[String]) -> Result<Gitignore, ::ignore::Error> {
     let mut ignore_builder = GitignoreBuilder::new("");
     for pattern in patterns {
@@ -634,9 +647,9 @@ impl PosixFS {
     })?;
     Ok(PosixFS {
       root: canonical_root,
-      ignore: ignore,
-      executor: executor,
-      symlink_behavior: symlink_behavior,
+      ignore,
+      executor,
+      symlink_behavior,
     })
   }
 
