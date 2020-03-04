@@ -588,14 +588,22 @@ impl PosixFS {
   pub fn new<P: AsRef<Path>>(
     root: P,
     ignore_patterns: &[String],
+    use_gitignore: bool,
     executor: task_executor::Executor,
   ) -> Result<PosixFS, String> {
-    Self::new_with_symlink_behavior(root, ignore_patterns, executor, SymlinkBehavior::Aware)
+    Self::new_with_symlink_behavior(
+      root,
+      ignore_patterns,
+      use_gitignore,
+      executor,
+      SymlinkBehavior::Aware,
+    )
   }
 
   pub fn new_with_symlink_behavior<P: AsRef<Path>>(
     root: P,
     ignore_patterns: &[String],
+    use_gitignore: bool,
     executor: task_executor::Executor,
     symlink_behavior: SymlinkBehavior,
   ) -> Result<PosixFS, String> {
@@ -615,6 +623,8 @@ impl PosixFS {
         })
       })
       .map_err(|e| format!("Could not canonicalize root {:?}: {:?}", root, e))?;
+
+    println!("About to use gitignore: {}", use_gitignore);
 
     let ignore = GitignoreStyleExcludes::create(&ignore_patterns).map_err(|e| {
       format!(

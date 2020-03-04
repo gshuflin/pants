@@ -538,9 +538,11 @@ impl Snapshot {
     future::result(digest_hint.ok_or_else(|| "No digest hint provided.".to_string()))
       .and_then(move |digest| Snapshot::from_digest(store, digest, workunit_store))
       .or_else(|_| {
+        let use_gitignore = false; //TODO do we want this here?
         let posix_fs = Arc::new(try_future!(PosixFS::new_with_symlink_behavior(
           root_path,
           &[],
+          use_gitignore,
           executor,
           SymlinkBehavior::Oblivious
         )));

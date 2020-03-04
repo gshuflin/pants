@@ -384,13 +384,14 @@ fn assert_only_file_is_executable(path: &Path, want_is_executable: bool) {
 }
 
 fn new_posixfs<P: AsRef<Path>>(dir: P) -> PosixFS {
-  PosixFS::new(dir.as_ref(), &[], task_executor::Executor::new()).unwrap()
+  PosixFS::new(dir.as_ref(), &[], false, task_executor::Executor::new()).unwrap()
 }
 
 fn new_posixfs_symlink_oblivious<P: AsRef<Path>>(dir: P) -> PosixFS {
   PosixFS::new_with_symlink_behavior(
     dir.as_ref(),
     &[],
+    false,
     task_executor::Executor::new(),
     SymlinkBehavior::Oblivious,
   )

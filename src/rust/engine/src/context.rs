@@ -222,23 +222,25 @@ impl Core {
 
     let http_client = reqwest::r#async::Client::new();
     let rule_graph = RuleGraph::new(tasks.as_map(), root_subject_types);
-
-    println!("Initializing Core with use_gitignore: {}", use_gitignore);
+    let vfs = PosixFS::new(
+      &build_root,
+      &ignore_patterns,
+      use_gitignore,
+      executor.clone(),
+    )
+    .map_err(|e| format!("Could not initialize VFS: {:?}", e))?;
 
     Ok(Core {
       graph: Graph::new(),
-      tasks: tasks,
-      rule_graph: rule_graph,
-      types: types,
-      executor: executor.clone(),
+      tasks,
+      rule_graph,
+      types,
+      executor,
       store,
       command_runner,
       http_client,
-      // TODO: Errors in initialization should definitely be exposed as python
-      // exceptions, rather than as panics.
-      vfs: PosixFS::new(&build_root, &ignore_patterns, executor)
-        .map_err(|e| format!("Could not initialize VFS: {:?}", e))?,
-      build_root: build_root,
+      vfs,
+      build_root,
     })
   }
 

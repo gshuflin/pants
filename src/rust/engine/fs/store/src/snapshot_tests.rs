@@ -35,7 +35,8 @@ fn setup() -> (
   )
   .unwrap();
   let dir = tempfile::Builder::new().prefix("root").tempdir().unwrap();
-  let posix_fs = Arc::new(PosixFS::new(dir.path(), &[], task_executor::Executor::new()).unwrap());
+  let posix_fs =
+    Arc::new(PosixFS::new(dir.path(), &[], false, task_executor::Executor::new()).unwrap());
   let file_saver = OneOffStoreFileByDigest::new(store.clone(), posix_fs.clone());
   (store, dir, posix_fs, file_saver, executor)
 }
