@@ -146,9 +146,15 @@ impl GitignoreStyleExcludes {
   }
 
   #[allow(dead_code)]
-  fn create_with_gitignore(patterns: &[String]) -> Result<Arc<Self>, String> {
+  fn create_with_gitignore(root: &Path, patterns: &[String]) -> Result<Arc<Self>, String> {
 
-    let gitignore = Self::create_gitignore(patterns)
+    let mut ignore_builder = GitignoreBuilder::new(root);
+    for pattern in patterns {
+      ignore_builder.add_line(None, pattern.as_str())
+        .map_err(|e| format!("Could not parse glob excludes {:?}: {:?}", patterns, e))?;
+    }
+    let gitignore = ignore_builder
+      .build()
       .map_err(|e| format!("Could not parse glob excludes {:?}: {:?}", patterns, e))?;
 
     Ok(Arc::new(Self {
@@ -637,14 +643,12 @@ impl PosixFS {
       })
       .map_err(|e| format!("Could not canonicalize root {:?}: {:?}", root, e))?;
 
-    println!("About to use gitignore: {}", use_gitignore);
+    let ignore = if use_gitignore {
+      GitignoreStyleExcludes::create_with_gitignore(root, &ignore_patterns)
+    } else {
+      GitignoreStyleExcludes::create(&ignore_patterns)
+    }?;
 
-    let ignore = GitignoreStyleExcludes::create(&ignore_patterns).map_err(|e| {
-      format!(
-        "Could not parse build ignore inputs {:?}: {:?}",
-        ignore_patterns, e
-      )
-    })?;
     Ok(PosixFS {
       root: canonical_root,
       ignore,
