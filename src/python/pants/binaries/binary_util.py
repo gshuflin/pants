@@ -19,6 +19,7 @@ from pants.engine.rules import rule
 from pants.fs.archive import archiver_for_path
 from pants.net.http.fetcher import Fetcher
 from pants.option.global_options import GlobalOptions
+from pants.option.options import Options
 from pants.option.options_bootstrapper import OptionsBootstrapper
 from pants.subsystem.subsystem import Subsystem
 from pants.util.contextutil import temporary_file
@@ -536,7 +537,7 @@ def select(argv):
     options_bootstrapper = OptionsBootstrapper.create(args=[argv[0]])
     subsystems = (GlobalOptions, BinaryUtil.Factory)
     known_scope_infos = reduce(set.union, (ss.known_scope_infos() for ss in subsystems), set())
-    options = options_bootstrapper.get_full_options(known_scope_infos)
+    options = Options.from_bootstrapper(options_bootstrapper, known_scope_infos)
     # Initialize Subsystems.
     Subsystem.set_options(options)
 

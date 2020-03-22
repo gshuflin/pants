@@ -16,6 +16,8 @@ from pants.init.extension_loader import load_backends_and_plugins
 from pants.init.global_subsystems import GlobalSubsystems
 from pants.init.plugin_resolver import PluginResolver
 from pants.option.global_options import GlobalOptions
+from pants.option.options import Options
+from pants.option.options_bootstrapper import OptionsBootstrapper
 from pants.subsystem.subsystem import Subsystem
 from pants.util.dirutil import fast_relpath_optional
 
@@ -76,7 +78,9 @@ class OptionsInitializer:
     """Initializes options."""
 
     @staticmethod
-    def _construct_options(options_bootstrapper, build_configuration):
+    def _construct_options(
+        options_bootstrapper: OptionsBootstrapper, build_configuration: BuildConfiguration
+    ) -> Options:
         """Parse and register options.
 
         :returns: An Options object representing the full set of runtime options.
@@ -92,12 +96,12 @@ class OptionsInitializer:
             | set(Goal.get_optionables())
         )
 
-        # Now that we have the known scopes we can get the full options. `get_full_options` will
+        # Now that we have the known scopes we can get the full options. `Options.from_bootstrapper` will
         # sort and de-duplicate these for us.
         known_scope_infos = [
             si for optionable in top_level_optionables for si in optionable.known_scope_infos()
         ]
-        return options_bootstrapper.get_full_options(known_scope_infos)
+        return Options.from_bootstrapper(options_bootstrapper, known_scope_infos)
 
     @staticmethod
     def compute_pants_ignore(buildroot, global_options):

@@ -11,6 +11,7 @@ from pants.engine.selectors import Params
 from pants.init.options_initializer import BuildConfigInitializer
 from pants.init.specs_calculator import SpecsCalculator
 from pants.option.global_options import GlobalOptions
+from pants.option.options import Options
 from pants.testutil.option.util import create_options_bootstrapper
 from pants.testutil.test_base import TestBase
 from pants.util.meta import classproperty
@@ -55,9 +56,11 @@ class GoalRuleTestBase(TestBase):
             args=(*(global_args or []), self.goal_cls.name, *(args or [])), env=env,
         )
         BuildConfigInitializer.get(options_bootstrapper)
-        full_options = options_bootstrapper.get_full_options(
-            [*GlobalOptions.known_scope_infos(), *self.goal_cls.subsystem_cls.known_scope_infos(),]
-        )
+        known_scope_infos = [
+            *GlobalOptions.known_scope_infos(),
+            *self.goal_cls.subsystem_cls.known_scope_infos(),
+        ]
+        full_options = Options.from_bootstrapper(options_bootstrapper, known_scope_infos)
         stdout, stderr = StringIO(), StringIO()
         console = Console(stdout=stdout, stderr=stderr)
         scheduler = self.scheduler

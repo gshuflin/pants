@@ -6,18 +6,16 @@ import os
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Iterable, List, Mapping, Optional, Sequence, Set, Tuple, Type
+from typing import Dict, List, Mapping, Optional, Sequence, Tuple
 
 from pants.base.build_environment import get_default_pants_config_file
 from pants.option.config import Config
 from pants.option.custom_types import ListValueComponent
 from pants.option.global_options import GlobalOptions
-from pants.option.optionable import Optionable
 from pants.option.options import Options
-from pants.option.scope import GLOBAL_SCOPE, ScopeInfo
+from pants.option.scope import GLOBAL_SCOPE
 from pants.util.dirutil import read_file
-from pants.util.memo import memoized_method, memoized_property
-from pants.util.ordered_set import FrozenOrderedSet
+from pants.util.memo import memoized_property
 from pants.util.strutil import ensure_text
 
 
@@ -206,34 +204,3 @@ class OptionsBootstrapper:
     def get_bootstrap_options(self) -> Options:
         """Returns an Options instance that only knows about the bootstrap options."""
         return self.bootstrap_options
-
-    @memoized_method
-    def _full_options(self, known_scope_infos: FrozenOrderedSet[ScopeInfo]) -> Options:
-        bootstrap_option_values = self.get_bootstrap_options().for_global_scope()
-        options = Options.create(
-            self.env,
-            self.config,
-            known_scope_infos,
-            args=self.args,
-            bootstrap_option_values=bootstrap_option_values,
-        )
-
-        distinct_optionable_classes: Set[Type[Optionable]] = set()
-        for ksi in known_scope_infos:
-            if not ksi.optionable_cls or ksi.optionable_cls in distinct_optionable_classes:
-                continue
-            distinct_optionable_classes.add(ksi.optionable_cls)
-            ksi.optionable_cls.register_options_on_scope(options)
-
-        return options
-
-    def get_full_options(self, known_scope_infos: Iterable[ScopeInfo]) -> Options:
-        """Get the full Options instance bootstrapped by this object for the given known scopes.
-
-        :param known_scope_infos: ScopeInfos for all scopes that may be encountered.
-        :returns: A bootrapped Options instance that also carries options for all the supplied known
-                  scopes.
-        """
-        return self._full_options(
-            FrozenOrderedSet(sorted(known_scope_infos, key=lambda si: si.scope))
-        )

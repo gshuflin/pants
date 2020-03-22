@@ -13,6 +13,7 @@ from pants.option.arg_splitter import ArgSplitter, HelpRequest
 from pants.option.config import Config
 from pants.option.option_tracker import OptionTracker
 from pants.option.option_util import is_list_option
+# from pants.option.options_bootstrapper import OptionsBootstrapper
 from pants.option.option_value_container import OptionValueContainer
 from pants.option.parser import Parser
 from pants.option.parser_hierarchy import ParserHierarchy, all_enclosing_scopes, enclosing_scope
@@ -106,6 +107,37 @@ class Options:
                 if scope not in original_scopes:
                     ret.add(ScopeInfo(scope, ScopeInfo.INTERMEDIATE))
         return FrozenOrderedSet(ret)
+
+    @classmethod
+    def from_bootstrapper(
+        cls, bootstrapper: "OptionsBootstrapper", known_scope_infos: Iterable[ScopeInfo]
+    ) -> "Options":
+
+        known_scope_infos = FrozenOrderedSet(sorted(known_scope_infos, key=lambda si: si.scope))
+        return cls._memoized_from_bootstrapper(bootstrapper, known_scope_infos)
+
+    @classmethod
+    @memoized_method
+    def _memoized_from_bootstrapper(
+        cls, bootstrapper: "OptionsBootstrapper", known_scope_infos: FrozenOrderedSet[ScopeInfo]
+    ) -> "Options":
+        bootstrap_option_values = bootstrapper.get_bootstrap_options().for_global_scope()
+        options = Options.create(
+            env=bootstrapper.env,
+            config=bootstrapper.config,
+            known_scope_infos=known_scope_infos,
+            args=bootstrapper.args,
+            bootstrap_option_values=bootstrap_option_values,
+        )
+
+        distinct_optionable_classes: Set[Type[Optionable]] = set()
+        for ksi in known_scope_infos:
+            if not ksi.optionable_cls or ksi.optionable_cls in distinct_optionable_classes:
+                continue
+            distinct_optionable_classes.add(ksi.optionable_cls)
+            ksi.optionable_cls.register_options_on_scope(options)
+
+        return options
 
     @classmethod
     def create(

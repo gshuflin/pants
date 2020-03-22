@@ -16,6 +16,7 @@ from pkg_resources import working_set as global_working_set
 
 from pants.option.global_options import GlobalOptions
 from pants.option.optionable import Optionable
+from pants.option.options import Options
 from pants.option.options_bootstrapper import OptionsBootstrapper
 from pants.option.scope import ScopeInfo
 from pants.python.python_repos import PythonRepos
@@ -182,7 +183,7 @@ class PluginResolver:
         known_scope_infos: List[ScopeInfo] = [
             ksi for optionable in optionables for ksi in optionable.known_scope_infos()
         ]
-        options = self._options_bootstrapper.get_full_options(known_scope_infos)
+        options = Options.from_bootstrapper(self._options_bootstrapper, known_scope_infos)
 
         # Ignore command line flags since we'd blow up on any we don't understand (most of them).
         # If someone wants to bootstrap plugins in a one-off custom way they'll need to use env vars
