@@ -47,17 +47,14 @@ impl Logger {
   }
 
   pub fn init(max_level: u64, show_rust_3rdparty_logs: bool) {
-    let max_python_level: Result<PythonLogLevel, _> = max_level.try_into();
-    match max_python_level {
-      Ok(python_level) => {
+    let python_level: PythonLogLevel = max_level.try_into()
+      .expect(format!("Unrecognised log level from python: {}: {}", max_level, err));
         let level: log::LevelFilter = python_level.into();
         set_max_level(level);
         LOGGER
           .show_rust_3rdparty_logs
           .store(show_rust_3rdparty_logs, Ordering::SeqCst);
         set_logger(&*LOGGER).expect("Error setting up global logger.");
-      }
-      Err(err) => panic!("Unrecognised log level from python: {}: {}", max_level, err),
     };
   }
 
