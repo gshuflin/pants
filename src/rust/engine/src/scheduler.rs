@@ -1,6 +1,8 @@
 // Copyright 2017 Pants project contributors (see CONTRIBUTORS.md).
 // Licensed under the Apache License, Version 2.0 (see LICENSE).
 
+#![allow(warnings)]
+
 use std::collections::{HashMap, HashSet};
 use std::convert::TryInto;
 use std::io;
@@ -22,7 +24,8 @@ use indexmap::IndexMap;
 use log::{debug, info, warn};
 use logging::logger::LOGGER;
 use parking_lot::Mutex;
-use ui::{EngineDisplay, KeyboardCommand};
+use ui::KeyboardCommand;
+use crate::console_ui::ConsoleUI;
 use uuid::Uuid;
 use watch::Invalidatable;
 use workunit_store::WorkUnitStore;
@@ -45,7 +48,7 @@ struct InnerSession {
   roots: Mutex<HashSet<Root>>,
   // If enabled, the display that will render the progress of the V2 engine. This is only
   // Some(_) if the --v2-ui option is enabled.
-  display: Option<Arc<Mutex<EngineDisplay>>>,
+  display: Option<ConsoleUI>,
   // If enabled, Zipkin spans for v2 engine will be collected.
   should_record_zipkin_spans: bool,
   // A place to store info about workunits in rust part
@@ -66,10 +69,9 @@ impl Session {
     build_id: String,
     should_report_workunits: bool,
   ) -> Session {
-    let display = if should_render_ui && EngineDisplay::stdout_is_tty() {
-      let mut display = EngineDisplay::new();
-      display.initialize(num_cpus::get());
-      Some(Arc::new(Mutex::new(display)))
+    let workunit_store = WorkUnitStore::new();
+    let display = if should_render_ui {
+      Some(ConsoleUI::new(workunit_store.clone()))
     } else {
       None
     };
@@ -79,7 +81,7 @@ impl Session {
       roots: Mutex::new(HashSet::new()),
       display,
       should_record_zipkin_spans,
-      workunit_store: WorkUnitStore::new(),
+      workunit_store,
       build_id,
       should_report_workunits,
     };
@@ -100,7 +102,7 @@ impl Session {
     self.0.preceding_graph_size
   }
 
-  fn maybe_display(&self) -> Option<&Arc<Mutex<EngineDisplay>>> {
+  fn maybe_display(&self) -> Option<&ConsoleUI> {
     self.0.display.as_ref()
   }
 
@@ -122,30 +124,19 @@ impl Session {
 
   pub fn write_stdout(&self, msg: &str) {
     if let Some(display) = self.maybe_display() {
-      let mut d = display.lock();
-      d.write_stdout(msg);
+      display.write_stdout(msg);
     }
   }
 
   pub fn write_stderr(&self, msg: &str) {
     if let Some(display) = self.maybe_display() {
-      let mut d = display.lock();
-      d.write_stderr(msg);
+      display.write_stderr(msg);
     }
   }
 
   pub fn with_console_ui_disabled<F: FnOnce() -> T, T>(&self, f: F) -> T {
     if let Some(display) = self.maybe_display() {
-      {
-        let mut d = display.lock();
-        d.suspend()
-      }
-      let output = f();
-      {
-        let mut d = display.lock();
-        d.unsuspend();
-      }
-      output
+      display.with_console_ui_disabled(f)
     } else {
       f()
     }
@@ -333,9 +324,19 @@ impl Scheduler {
 
     // This map keeps the k most relevant jobs in assigned possitions.
     // Keys are positions in the display (display workers) and the values are the actual jobs to print.
-    let mut tasks = IndexMap::new();
+    //let mut tasks = IndexMap::new();
     let refresh_interval = Duration::from_millis(100);
 
+    match session.maybe_display() {
+      Some(display) => Ok(display.render_loop(receiver, refresh_interval)),
+      None => loop {
+        if let Ok(res) = receiver.recv_timeout(refresh_interval) {
+          break Ok(res);
+        }
+      }
+    }
+
+    /*
     let maybe_display_handle = Self::maybe_display_initialize(&session);
     let result = loop {
       if let Ok(res) = receiver.recv_timeout(refresh_interval) {
@@ -347,8 +348,10 @@ impl Scheduler {
     Self::maybe_display_teardown(session, maybe_display_handle);
 
     result
+    */
   }
 
+  /*
   fn maybe_display_initialize(session: &Session) -> Option<Uuid> {
     if let Some(display) = session.maybe_display() {
       {
@@ -444,6 +447,7 @@ impl Scheduler {
       Ok(KeyboardCommand::None) => Ok(()),
     }
   }
+  */
 }
 
 impl Drop for Scheduler {

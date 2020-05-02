@@ -29,6 +29,7 @@
 // other unsafeness.
 #![allow(clippy::not_unsafe_ptr_arg_deref)]
 
+mod console_ui;
 mod context;
 mod core;
 pub mod externs;
