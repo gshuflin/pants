@@ -12,7 +12,9 @@ use std::future::Future;
 use std::io::{stderr, Stderr, Write};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
+use std::sync::{mpsc, Arc};
+
+use crate::console_ui::ConsoleMessage;
 
 use chrono;
 use lazy_static::lazy_static;
@@ -34,6 +36,7 @@ pub struct Logger {
   stderr_log: Mutex<MaybeWriteLogger<Stderr>>,
   show_rust_3rdparty_logs: AtomicBool,
   engine_display_handles: Mutex<HashMap<Uuid, Arc<Mutex<EngineDisplay>>>>,
+  display_handle: Mutex<Option<mpsc::Sender<ConsoleMessage>>>,
 }
 
 impl Logger {
@@ -43,6 +46,7 @@ impl Logger {
       stderr_log: Mutex::new(MaybeWriteLogger::empty()),
       show_rust_3rdparty_logs: AtomicBool::new(true),
       engine_display_handles: Mutex::new(HashMap::new()),
+      display_handle: Mutex::new(None),
     }
   }
 
@@ -129,6 +133,11 @@ impl Logger {
       .map(|level: PythonLogLevel| {
         log!(target: target, level.into(), "{}", message);
       })
+  }
+
+  pub fn register_display_handle(&self, sender: mpsc::Sender<ConsoleMessage>) {
+    let handle = self.display_handle.lock();
+    *handle = Some(sender);
   }
 
   pub fn register_engine_display(&self, engine_display: Arc<Mutex<EngineDisplay>>) -> Uuid {

@@ -88,7 +88,7 @@ impl ConsoleUI {
       }
     }
 
-    //LOGGER.set_stderr_sink();
+    LOGGER.register_display_handle(display_sender.clone());
     let num_swimlanes = num_cpus::get();
     let bars: Vec<_> = self.setup_bars(num_swimlanes);
     let bar_to_write_to = bars[0].clone();
