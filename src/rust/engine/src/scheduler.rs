@@ -25,7 +25,7 @@ use log::{debug, info, warn};
 use logging::logger::LOGGER;
 use parking_lot::Mutex;
 use ui::KeyboardCommand;
-use crate::console_ui::ConsoleUI;
+use crate::console_ui::{ConsoleUI, ConsoleMessage};
 use uuid::Uuid;
 use watch::Invalidatable;
 use workunit_store::WorkUnitStore;
@@ -276,7 +276,7 @@ impl Scheduler {
   ///
   fn execute_helper(
     context: Context,
-    sender: mpsc::Sender<Vec<Result<Value, Failure>>>,
+    sender: mpsc::Sender<ConsoleMessage>,
     roots: Vec<Root>,
   ) {
     let core = context.core.clone();
@@ -298,7 +298,7 @@ impl Scheduler {
           .collect::<Vec<_>>(),
       )
       .await;
-      let _ = sender.send(res);
+      let _ = sender.send(ConsoleMessage::FinalResult(res));
     });
   }
 
@@ -320,17 +320,18 @@ impl Scheduler {
     let context = Context::new(self.core.clone(), session.clone());
     let (sender, receiver) = mpsc::channel();
 
-    Scheduler::execute_helper(context, sender, request.roots.clone());
+    Scheduler::execute_helper(context, sender.clone(), request.roots.clone());
 
     // This map keeps the k most relevant jobs in assigned possitions.
     // Keys are positions in the display (display workers) and the values are the actual jobs to print.
     //let mut tasks = IndexMap::new();
     let refresh_interval = Duration::from_millis(100);
+    //self.0.display_sender = Some(sender.clone());
 
     match session.maybe_display() {
-      Some(display) => Ok(display.render_loop(receiver, refresh_interval)),
+      Some(display) => Ok(display.render_loop(sender, receiver, refresh_interval)),
       None => loop {
-        if let Ok(res) = receiver.recv_timeout(refresh_interval) {
+        if let Ok(ConsoleMessage::FinalResult(res)) = receiver.recv_timeout(refresh_interval) {
           break Ok(res);
         }
       }

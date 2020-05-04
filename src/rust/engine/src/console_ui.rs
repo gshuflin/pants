@@ -1,35 +1,49 @@
 // Copyright 2020 Pants project contributors (see CONTRIBUTORS.md).
 // Licensed under the Apache License, Version 2.0 (see LICENSE).
 
+#![allow(unused_imports)]
+#![allow(unused_variables)]
 use crate::scheduler::RootResult;
 use std::time::Duration;
-use std::sync::{mpsc};
+use std::sync::{mpsc, Arc};
 use crate::core::{Failure, Value};
-use indicatif::{MultiProgress, /*ProgressDrawTarget,*/ ProgressBar, ProgressStyle};
+use indicatif::{MultiProgress, ProgressDrawTarget, ProgressBar, ProgressStyle};
 //use logging::logger::LOGGER;
 use workunit_store::WorkUnitStore;
 use indexmap::IndexMap;
+use parking_lot::Mutex;
+
+pub enum ConsoleMessage {
+  FinalResult(Vec<Result<Value, Failure>>),
+  Stdout(String),
+  Stderr(String),
+}
 
 pub struct ConsoleUI {
   workunit_store: WorkUnitStore,
   multi_progress_bars: MultiProgress,
+  display_sender: Arc<Mutex<Option<mpsc::Sender<ConsoleMessage>>>>
 }
 
 impl ConsoleUI {
   pub fn new(workunit_store: WorkUnitStore) -> ConsoleUI {
-    //let inner = InnerConsoleUI::new(workunit_store);
     ConsoleUI {
       workunit_store,
       multi_progress_bars: MultiProgress::new(),
+      display_sender: Arc::new(Mutex::new(None)),
     }
   }
 
-  pub fn write_stdout(&self, _msg: &str) {
-    //print!("XXX {}", msg);
+  pub fn write_stdout(&self, msg: &str) {
+    if let Some(ref sender) = *self.display_sender.lock() {
+      sender.send(ConsoleMessage::Stdout(msg.to_string())).unwrap();
+    }
   }
 
-  pub fn write_stderr(&self, _msg: &str) {
-    //eprint!("EEE {}", msg);
+  pub fn write_stderr(&self, msg: &str) {
+    if let Some(ref sender) = *self.display_sender.lock() {
+      sender.send(ConsoleMessage::Stderr(msg.to_string())).unwrap();
+    }
   }
 
   pub fn with_console_ui_disabled<F: FnOnce() -> T, T>(&self, f: F) -> T {
@@ -50,25 +64,34 @@ impl ConsoleUI {
   fn get_label_from_heavy_hitters<'a>(tasks_to_display: impl Iterator<Item = (&'a String, &'a Option<Duration>)>) -> Vec<String> {
     tasks_to_display
       .map(|(label, maybe_duration)| {
-          let duration_label = match maybe_duration {
+        let duration_label = match maybe_duration {
           None => "(Waiting) ".to_string(),
           Some(duration) => {
-          let duration_secs: f64 = (duration.as_millis() as f64) / 1000.0;
-          format!("{:.2}s ", duration_secs)
+            let duration_secs: f64 = (duration.as_millis() as f64) / 1000.0;
+            format!("{:.2}s ", duration_secs)
           }
-          };
-          format!("{}{}", duration_label, label)
-          })
+        };
+        format!("{}{}", duration_label, label)
+      })
     .collect()
   }
 
-  pub fn render_loop(&self, execution_status: mpsc::Receiver<Vec<Result<Value, Failure>>>,
+  pub fn render_loop(&self,
+      display_sender: mpsc::Sender<ConsoleMessage>,
+      execution_status: mpsc::Receiver<ConsoleMessage>,
       refresh_interval: Duration,
       ) -> Vec<RootResult> {
+
+    {
+      if let Some(ref mut mutex) = self.display_sender.try_lock() {
+        **mutex = Some(display_sender);
+      }
+    }
+
     //LOGGER.set_stderr_sink();
     let num_swimlanes = num_cpus::get();
     let bars: Vec<_> = self.setup_bars(num_swimlanes);
-    let  _bar_to_write_to = bars[0].clone();
+    let bar_to_write_to = bars[0].clone();
     let (display_loop_sender, display_loop_receiver) = mpsc::channel();
 
     let workunit_store = self.workunit_store.clone();
@@ -95,18 +118,28 @@ impl ConsoleUI {
             None => bar.set_message(""),
           }
         }
-        if let Ok(res) = execution_status.recv_timeout(refresh_interval) {
-          break res;
+        match execution_status.recv_timeout(refresh_interval) {
+          Ok(ConsoleMessage::FinalResult(res)) => break res,
+          Ok(ConsoleMessage::Stdout(msg)) => {
+            for bar in bars.iter() {
+              bar.set_draw_target(ProgressDrawTarget::hidden());
+            }
+            print!("XXXXX {}", msg);
+          },
+          Ok(ConsoleMessage::Stderr(msg)) => {
+            bar_to_write_to.println(msg)
+          },
+          _ => (),
         }
       };
 
-      display_loop_sender.send(output).unwrap();
       for bar in bars.iter() {
         bar.finish_and_clear();
       }
+      display_loop_sender.send(output).unwrap();
     });
 
-    self.multi_progress_bars.join_and_clear().unwrap();
+    self.multi_progress_bars.join().unwrap();
     display_loop_receiver.recv().unwrap()
   }
 }
