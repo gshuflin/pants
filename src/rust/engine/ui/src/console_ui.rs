@@ -25,9 +25,11 @@
 // Arc<Mutex> can be more clear than needing to grok Orderings:
 #![allow(clippy::mutex_atomic)]
 
+use std::future::Future;
+use std::pin::Pin;
 use std::time::Duration;
 
-use futures::future::FutureExt;
+use futures::future::{FutureExt, TryFutureExt};
 use indexmap::IndexMap;
 use indicatif::{MultiProgress, ProgressBar, ProgressDrawTarget, ProgressStyle};
 use uuid::Uuid;
@@ -176,7 +178,7 @@ impl ConsoleUI {
 
     // Setup bars, and then spawning rendering of the bars into a background task.
     let (multi_progress, bars) = Self::setup_bars(num_cpus::get());
-    let _multi_progress_task = {
+    let multi_progress_task = {
       executor
         .spawn_blocking(move || multi_progress.join())
         .boxed()
@@ -184,8 +186,10 @@ impl ConsoleUI {
 
     self.instance = Some(Instance {
       tasks_to_display: IndexMap::new(),
+      multi_progress_task,
       logger_handle: LOGGER.register_stderr_handler(stderr_handler),
       bars,
+      executor: executor,
     });
     Ok(())
   }
@@ -196,9 +200,15 @@ impl ConsoleUI {
   pub fn teardown(&mut self) {
     if let Some(instance) = self.instance.take() {
       LOGGER.deregister_stderr_handler(instance.logger_handle);
-      std::mem::drop(instance);
-      let interval = Duration::from_millis(1000 / Self::render_rate_hz());
-      std::thread::sleep(interval);
+      let executor = instance.executor.clone();
+      let multi_progress_task = instance.multi_progress_task;
+      std::mem::drop(instance.bars);
+      let f = async {multi_progress_task
+        .map_err(|e| format!("Failed to render UI: {}", e))
+        .boxed()
+        .await
+      };
+      executor.block_on(f).unwrap();
     }
   }
 }
@@ -206,6 +216,8 @@ impl ConsoleUI {
 /// The state for one run of the ConsoleUI.
 struct Instance {
   tasks_to_display: IndexMap<String, Option<Duration>>,
+  multi_progress_task: Pin<Box<dyn Future<Output = std::io::Result<()>> + Send>>,
   bars: Vec<ProgressBar>,
   logger_handle: Uuid,
+  executor: Executor,
 }
