@@ -18,15 +18,26 @@ use testutil::owned_string_vec;
 use testutil::path::find_bash;
 use tokio::runtime::Handle;
 
+async fn assert_stdout_stderr(result: &FallibleProcessResultWithPlatform, store: Store, stdout: &str, stderr: &str) {
+  let _ = store.load_file_bytes_with(result.stdout_digest, |bytes: &[u8]| {
+    assert_eq!(bytes, stdout.as_bytes());
+    Ok(())
+  }).await;
+
+  let _ = store.load_file_bytes_with(result.stderr_digest, |bytes: &[u8]| {
+    assert_eq!(bytes, stderr.as_bytes());
+    Ok(())
+  }).await;
+}
+
 #[tokio::test]
 #[cfg(unix)]
 async fn stdout() {
-  let result = run_command_locally(Process::new(owned_string_vec(&["/bin/echo", "-n", "foo"])))
+  let (result, store) = run_command_locally(Process::new(owned_string_vec(&["/bin/echo", "-n", "foo"])))
     .await
     .unwrap();
 
-  assert_eq!(result.stdout, "foo".as_bytes());
-  assert_eq!(result.stderr, "".as_bytes());
+  assert_stdout_stderr(result, store, "foo", "").await;
   assert_eq!(result.exit_code, 0);
   assert_eq!(result.output_directory, EMPTY_DIGEST);
   assert_eq!(result.execution_attempts, vec![]);
@@ -524,30 +535,32 @@ async fn working_directory() {
   assert_eq!(result.platform, Platform::current().unwrap());
 }
 
-async fn run_command_locally(req: Process) -> Result<FallibleProcessResultWithPlatform, String> {
+async fn run_command_locally(req: Process) -> Result<(FallibleProcessResultWithPlatform, Store), String> {
   let work_dir = TempDir::new().unwrap();
-  run_command_locally_in_dir_with_cleanup(req, work_dir.path().to_owned()).await
+  let store_dir = TempDir::new().unwrap();
+  let executor = task_executor::Executor::new(Handle::current());
+  let store = Store::local_only(executor, store_dir.path()).unwrap();
+  let result = run_command_locally_in_dir_with_cleanup(req, work_dir.path().to_owned()).await?;
+  Ok((result, store))
 }
 
 async fn run_command_locally_in_dir_with_cleanup(
   req: Process,
   dir: PathBuf,
+  executor: task_executor::Executor,
+  store: Store,
 ) -> Result<FallibleProcessResultWithPlatform, String> {
-  run_command_locally_in_dir(req, dir, true, None, None).await
+  run_command_locally_in_dir(req, dir, true, store, executor).await
 }
 
 async fn run_command_locally_in_dir(
   req: Process,
   dir: PathBuf,
   cleanup: bool,
-  store: Option<Store>,
-  executor: Option<task_executor::Executor>,
+  store: Store,
+  executor: task_executor::Executor,
 ) -> Result<FallibleProcessResultWithPlatform, String> {
-  let store_dir = TempDir::new().unwrap();
   let named_cache_dir = TempDir::new().unwrap();
-  let executor = executor.unwrap_or_else(|| task_executor::Executor::new(Handle::current()));
-  let store =
-    store.unwrap_or_else(|| Store::local_only(executor.clone(), store_dir.path()).unwrap());
   let runner = crate::local::CommandRunner::new(
     store,
     executor.clone(),

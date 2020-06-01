@@ -382,13 +382,14 @@ impl super::CommandRunner for CommandRunner {
                 history.current_attempt.remote_execution = Some(elapsed);
                 history.complete_attempt();
 
-                break FallibleProcessResultWithPlatform {
-                  stdout: Bytes::from(format!(
+                let stdout = Bytes::from(format!(
                     "Exceeded timeout of {:?} ({:?} for the process and {:?} for remoting buffer time) with {:?} for operation {}, {}",
                     total_timeout, timeout, self.queue_buffer_time, elapsed, operation_name, description
-                  )),
-                  stdout_digest: hashing::EMPTY_DIGEST,
-                  stderr: Bytes::new(),
+                ));
+                let stdout_digest = store.store_file_bytes(stdout.clone(), true).await?;
+
+                break FallibleProcessResultWithPlatform {
+                  stdout_digest,
                   stderr_digest: hashing::EMPTY_DIGEST,
                   exit_code: -libc::SIGTERM,
                   output_directory: hashing::EMPTY_DIGEST,

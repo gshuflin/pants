@@ -379,9 +379,7 @@ pub struct ProcessMetadata {
 ///
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct FallibleProcessResultWithPlatform {
-  pub stdout: Bytes,
   pub stdout_digest: Digest,
-  pub stderr: Bytes,
   pub stderr_digest: Digest,
   pub exit_code: i32,
   pub platform: Platform,
