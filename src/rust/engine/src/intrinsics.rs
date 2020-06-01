@@ -131,11 +131,30 @@ fn multi_platform_process_request_to_process_result(
     })?;
     let result = context.get(process_request).await?;
     let platform_name: String = result.0.platform.into();
+
+    let store = core.store();
+    let stdout_bytes: Vec<u8> = store.load_file_bytes_with(result.0.stdout_digest, |bytes| bytes.to_owned())
+      .map_err(|err| throw(&err))
+      .and_then(|inner: Option<(Vec<u8>, _)>| {
+        match inner {
+          Some((bytes, _)) => future::ok(bytes),
+          None => future::err(throw("Error processing stdout bytes")),
+        }
+      }).await?;
+    let stderr_bytes: Vec<u8> = store.load_file_bytes_with(result.0.stderr_digest, |bytes| bytes.to_owned())
+      .map_err(|err| throw(&err))
+      .and_then(|inner: Option<(Vec<u8>, _)>| {
+        match inner {
+          Some((bytes, _)) => future::ok(bytes),
+          None => future::err(throw("Error processing stderr bytes")),
+        }
+      }).await?;
+
     Ok(externs::unsafe_call(
       &core.types.construct_process_result,
       &[
-        externs::store_bytes(&result.0.stdout),
-        externs::store_bytes(&result.0.stderr),
+        externs::store_bytes(&stdout_bytes),
+        externs::store_bytes(&stderr_bytes),
         externs::store_i64(result.0.exit_code.into()),
         Snapshot::store_directory(&core, &result.0.output_directory),
         externs::unsafe_call(
