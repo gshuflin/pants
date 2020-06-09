@@ -161,7 +161,7 @@ class Scheduler:
         return tasks
 
     def _register_task(
-        self, tasks, output_type, rule: TaskRule, union_rules: Dict[Type, OrderedSet[Type]]
+        self, tasks, output_type: Type, rule: TaskRule, union_rules: Dict[Type, OrderedSet[Type]]
     ) -> None:
         """Register the given TaskRule with the native scheduler."""
         self._native.lib.tasks_task_begin(
