@@ -1009,9 +1009,11 @@ fn tasks_task_begin(
   with_tasks(py, tasks_ptr, |tasks| {
     let func = Function(externs::key_for(func.into())?);
     let output_type = externs::type_for(output_type);
+    let can_modify_workunit = false;
     tasks.task_begin(
       func,
       output_type,
+      can_modify_workunit,
       cacheable,
       name,
       if desc.is_empty() { None } else { Some(desc) },
