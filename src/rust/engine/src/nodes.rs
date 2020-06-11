@@ -163,7 +163,7 @@ impl WrappedNode for Select {
               task: task.clone(),
               entry: Arc::new(self.entry.clone()),
             };
-            task.run_wrapped_node(context).await
+            task.run_wrapped_node(context).await.map(|(v, _)| v)
           }
           &Rule::Intrinsic(ref intrinsic) => {
             let intrinsic = intrinsic.clone();
@@ -845,9 +845,9 @@ impl fmt::Debug for Task {
 
 #[async_trait]
 impl WrappedNode for Task {
-  type Item = Value;
+  type Item = (Value, Option<()>);
 
-  async fn run_wrapped_node(self, context: Context) -> NodeResult<Value> {
+  async fn run_wrapped_node(self, context: Context) -> NodeResult<(Value, Option<()>)> {
     let params = self.params;
     let deps = {
       let edges = &context
@@ -877,7 +877,7 @@ impl WrappedNode for Task {
       t if t == context.core.types.coroutine => {
         Self::generate(context, params, entry, result_val).await
       }
-      t if t == product => Ok(result_val),
+      t if t == product => Ok((result_val, None)),
       _ => Err(throw(&format!(
         "{:?} returned a result value that did not satisfy its constraints: {:?}",
         func, result_val
@@ -1087,7 +1087,7 @@ impl Node for NodeKey {
               .map_ok(NodeOutput::Snapshot)
               .await
           }
-          NodeKey::Task(n) => n.run_wrapped_node(context).map_ok(NodeOutput::Value).await,
+          NodeKey::Task(n) => n.run_wrapped_node(context).map_ok(|(v, _)| NodeOutput::Value(v)).await,
         },
         Err(e) => Err(e),
       };
