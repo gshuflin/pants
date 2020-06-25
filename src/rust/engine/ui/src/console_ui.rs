@@ -27,6 +27,7 @@
 // Arc<Mutex> can be more clear than needing to grok Orderings:
 #![allow(clippy::mutex_atomic)]
 
+use std::sync::Arc;
 use std::future::Future;
 use std::pin::Pin;
 use std::time::Duration;
@@ -96,17 +97,11 @@ impl ConsoleUI {
     }
   }
 
-  fn setup_bars(num_swimlanes: usize) -> (MultiProgress, Vec<ProgressBar>) {
-    let multi_progress_bars = MultiProgress::with_draw_target(Self::default_draw_target());
-
-    let bars = (0..num_swimlanes)
-      .map(|_n| {
-        let style = ProgressStyle::default_bar().template("{spinner} {wide_msg}");
-        multi_progress_bars.add(ProgressBar::new(50).with_style(style))
-      })
-      .collect();
-
-    (multi_progress_bars, bars)
+  fn create_swimlane(msg: &str) -> ProgressBar {
+    let style = ProgressStyle::default_bar().template("{spinner} {wide_msg}");
+    let bar = ProgressBar::new(50).with_style(style);
+    bar.set_message(msg);
+    bar
   }
 
   fn get_label_from_heavy_hitters<'a>(
@@ -140,9 +135,11 @@ impl ConsoleUI {
       return;
     };
 
-    let num_swimlanes = instance.bars.len();
-    let heavy_hitters = self.workunit_store.heavy_hitters(num_swimlanes);
+    let multi_progress = &instance.multi_progress;
     let tasks_to_display = &mut instance.tasks_to_display;
+
+    let max_displayed_swimlanes = 8;
+    let heavy_hitters = self.workunit_store.heavy_hitters(max_displayed_swimlanes);
 
     // Insert every one in the set of tasks to display.
     // For tasks already here, the durations are overwritten.
@@ -156,11 +153,22 @@ impl ConsoleUI {
     }
 
     let swimlane_labels: Vec<String> = Self::get_label_from_heavy_hitters(tasks_to_display.iter());
-    for (n, pbar) in instance.bars.iter().enumerate() {
-      match swimlane_labels.get(n) {
-        Some(label) => pbar.set_message(label),
-        None => pbar.set_message(""),
+    let bars = &mut instance.bars;
+
+    for (n, label) in swimlane_labels.iter().enumerate() {
+      if n <= bars.len() {
+        let swimlane = Self::create_swimlane(label);
+        let swimlane = multi_progress.add(swimlane);
+        bars.push(swimlane);
+      } else {
+        bars[n].set_message(label);
       }
+    }
+
+    let swimlanes = swimlane_labels.len();
+    for n in swimlanes..max_displayed_swimlanes {
+      multi_progress.remove(n);
+      bars.remove(n);
     }
   }
 
@@ -180,10 +188,14 @@ impl ConsoleUI {
     }
 
     // Setup bars, and then spawning rendering of the bars into a background task.
-    let (multi_progress, bars) = Self::setup_bars(num_cpus::get());
+    //let (multi_progress, bars) = Self::setup_bars(num_cpus::get());
+    let multi_progress_bars = MultiProgress::with_draw_target(Self::default_draw_target());
+
+    let multi_progress = Arc::new(multi_progress_bars);
+    let multi_progress_2 = Arc::clone(&multi_progress);
     let multi_progress_task = {
       executor
-        .spawn_blocking(move || multi_progress.join())
+        .spawn_blocking(move || multi_progress_2.join())
         .boxed()
     };
 
@@ -191,7 +203,8 @@ impl ConsoleUI {
       tasks_to_display: IndexMap::new(),
       multi_progress_task,
       logger_handle: LOGGER.register_stderr_handler(stderr_handler),
-      bars,
+      multi_progress,
+      bars: vec![],
     });
     Ok(())
   }
@@ -213,9 +226,11 @@ impl ConsoleUI {
 }
 
 /// The state for one run of the ConsoleUI.
+#[allow(dead_code)]
 struct Instance {
   tasks_to_display: IndexMap<String, Option<Duration>>,
   multi_progress_task: Pin<Box<dyn Future<Output = std::io::Result<()>> + Send>>,
   bars: Vec<ProgressBar>,
   logger_handle: Uuid,
+  multi_progress: Arc<MultiProgress>,
 }
