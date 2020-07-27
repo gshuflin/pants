@@ -746,5 +746,8 @@ class StreamingWorkunitProcessTests(TestBase):
             argv=("/bin/bash", "-c", "/bin/echo 'stdout output'"), description="Stdout process"
         )
 
+        from random import randint
+        assert 0 == randint(0,10000)
+
         with handler.session():
             self.request_single_product(ProcessResult, stdout_process)
