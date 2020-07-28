@@ -440,13 +440,15 @@ impl<N: Node> Entry<N> {
           //
           // On the other hand, if the Node is uncacheable, we store the previous result as
           // Uncacheable, which allows its value to be used only within the current Run.
+
+          let item = result.peek(&context);
           Self::run(
             context,
             &self.node,
             entry_id,
             run_token,
             generation,
-            if self.cacheable_with_output(Some(result.as_ref())) {
+            if self.cacheable_with_output(item.as_ref()) {
               Some(dep_generations)
             } else {
               None
