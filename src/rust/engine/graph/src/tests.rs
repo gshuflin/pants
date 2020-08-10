@@ -19,7 +19,7 @@ async fn create() {
   let context = TContext::new(graph.clone());
   assert_eq!(
     graph.create(TNode::new(2), &context).await,
-    Ok(vec![T(0, 0), T(1, 0), T(2, 0)])
+    Ok(vec![T::new(0, 0), T::new(1, 0), T::new(2, 0)])
   );
 }
 
@@ -31,7 +31,7 @@ async fn invalidate_and_clean() {
   // Create three nodes.
   assert_eq!(
     graph.create(TNode::new(2), &context).await,
-    Ok(vec![T(0, 0), T(1, 0), T(2, 0)])
+    Ok(vec![T::new(0, 0), T::new(1, 0), T::new(2, 0)])
   );
   assert_eq!(
     context.runs(),
@@ -40,7 +40,7 @@ async fn invalidate_and_clean() {
 
   // Clear the middle Node, which dirties the upper node.
   assert_eq!(
-    graph.invalidate_from_roots(|&TNode(n, _)| n == 1),
+    graph.invalidate_from_roots(|tnode| tnode.id == 1),
     InvalidationResult {
       cleared: 1,
       dirtied: 1
@@ -50,7 +50,7 @@ async fn invalidate_and_clean() {
   // Confirm that the cleared Node re-runs, and the upper node is cleaned without re-running.
   assert_eq!(
     graph.create(TNode::new(2), &context).await,
-    Ok(vec![T(0, 0), T(1, 0), T(2, 0)])
+    Ok(vec![T::new(0, 0), T::new(1, 0), T::new(2, 0)])
   );
   assert_eq!(
     context.runs(),
@@ -66,7 +66,7 @@ async fn invalidate_and_rerun() {
   // Create three nodes.
   assert_eq!(
     graph.create(TNode::new(2), &context).await,
-    Ok(vec![T(0, 0), T(1, 0), T(2, 0)])
+    Ok(vec![T::new(0, 0), T::new(1, 0), T::new(2, 0)])
   );
   assert_eq!(
     context.runs(),
@@ -75,7 +75,7 @@ async fn invalidate_and_rerun() {
 
   // Clear the middle Node, which dirties the upper node.
   assert_eq!(
-    graph.invalidate_from_roots(|&TNode(n, _)| n == 1),
+    graph.invalidate_from_roots(|tnode| tnode.id == 1),
     InvalidationResult {
       cleared: 1,
       dirtied: 1
@@ -87,7 +87,7 @@ async fn invalidate_and_rerun() {
   let context = context.new_session(1).with_salt(1);
   assert_eq!(
     graph.create(TNode::new(2), &context).await,
-    Ok(vec![T(0, 0), T(1, 1), T(2, 1)])
+    Ok(vec![T::new(0, 0), T::new(1, 1), T::new(2, 1)])
   );
   assert_eq!(context.runs(), vec![TNode::new(1), TNode::new(2)]);
 }
@@ -100,12 +100,12 @@ async fn invalidate_with_changed_dependencies() {
   // Create three nodes.
   assert_eq!(
     graph.create(TNode::new(2), &context).await,
-    Ok(vec![T(0, 0), T(1, 0), T(2, 0)])
+    Ok(vec![T::new(0, 0), T::new(1, 0), T::new(2, 0)])
   );
 
   // Clear the middle Node, which dirties the upper node.
   assert_eq!(
-    graph.invalidate_from_roots(|&TNode(n, _)| n == 1),
+    graph.invalidate_from_roots(|tnode| tnode.id == 1),
     InvalidationResult {
       cleared: 1,
       dirtied: 1
@@ -117,13 +117,13 @@ async fn invalidate_with_changed_dependencies() {
     .with_dependencies(vec![(TNode::new(1), None)].into_iter().collect());
   assert_eq!(
     graph.create(TNode::new(2), &context).await,
-    Ok(vec![T(1, 0), T(2, 0)])
+    Ok(vec![T::new(1, 0), T::new(2, 0)])
   );
 
   // Confirm that dirtying the bottom Node does not affect the middle/upper Nodes, which no
   // longer depend on it.
   assert_eq!(
-    graph.invalidate_from_roots(|&TNode(n, _)| n == 0),
+    graph.invalidate_from_roots(|tnode| tnode.id == 0),
     InvalidationResult {
       cleared: 1,
       dirtied: 0,
@@ -151,7 +151,7 @@ async fn invalidate_randomly() {
 
       // Invalidate a random node in the graph.
       let candidate = rng.gen_range(0, range);
-      graph2.invalidate_from_roots(|&TNode(n, _)| n == candidate);
+      graph2.invalidate_from_roots(|&TNode { id, .. }| id == candidate);
 
       thread::sleep(sleep_per_invalidation);
     }
@@ -207,7 +207,7 @@ async fn poll_cacheable() {
     .poll(TNode::new(2), None, None, &context)
     .await
     .unwrap();
-  assert_eq!(result, vec![T(0, 0), T(1, 0), T(2, 0)]);
+  assert_eq!(result, vec![T::new(0, 0), T::new(1, 0), T::new(2, 0)]);
 
   // Re-polling on a non-empty graph but with no LastObserved token should return immediately with
   // the same value, and the same token.
@@ -215,7 +215,7 @@ async fn poll_cacheable() {
     .poll(TNode::new(2), None, None, &context)
     .await
     .unwrap();
-  assert_eq!(result, vec![T(0, 0), T(1, 0), T(2, 0)]);
+  assert_eq!(result, vec![T::new(0, 0), T::new(1, 0), T::new(2, 0)]);
   assert_eq!(token1, token2);
 
   // But polling with the previous token should wait, since nothing has changed.
@@ -226,12 +226,12 @@ async fn poll_cacheable() {
   }
 
   // Invalidating something and re-polling should re-compute.
-  graph.invalidate_from_roots(|&TNode(n, _)| n == 0);
+  graph.invalidate_from_roots(|tnode| tnode.id == 0);
   let (result, _) = graph
     .poll(TNode::new(2), Some(token2), None, &context)
     .await
     .unwrap();
-  assert_eq!(result, vec![T(0, 0), T(1, 0), T(2, 0)]);
+  assert_eq!(result, vec![T::new(0, 0), T::new(1, 0), T::new(2, 0)]);
 }
 
 #[tokio::test]
@@ -249,7 +249,7 @@ async fn poll_uncacheable() {
     .poll(TNode::new(2), None, None, &context)
     .await
     .unwrap();
-  assert_eq!(result, vec![T(0, 0), T(1, 0), T(2, 0)]);
+  assert_eq!(result, vec![T::new(0, 0), T::new(1, 0), T::new(2, 0)]);
 
   // Polling with the previous token (in the same session) should wait, since nothing has changed.
   let request = graph.poll(TNode::new(2), Some(token1), None, &context);
@@ -259,12 +259,12 @@ async fn poll_uncacheable() {
   }
 
   // Invalidating something and re-polling should re-compute.
-  graph.invalidate_from_roots(|&TNode(n, _)| n == 0);
+  graph.invalidate_from_roots(|tnode| tnode.id == 0);
   let (result, _) = graph
     .poll(TNode::new(2), Some(token1), None, &context)
     .await
     .unwrap();
-  assert_eq!(result, vec![T(0, 0), T(1, 0), T(2, 0)]);
+  assert_eq!(result, vec![T::new(0, 0), T::new(1, 0), T::new(2, 0)]);
 }
 
 #[tokio::test]
@@ -281,7 +281,7 @@ async fn dirty_dependents_of_uncacheable_node() {
   // Create three nodes.
   assert_eq!(
     graph.create(TNode::new(2), &context).await,
-    Ok(vec![T(0, 0), T(1, 0), T(2, 0)])
+    Ok(vec![T::new(0, 0), T::new(1, 0), T::new(2, 0)])
   );
   assert_eq!(
     context.runs(),
@@ -292,7 +292,7 @@ async fn dirty_dependents_of_uncacheable_node() {
   let context = context.new_session(1);
   assert_eq!(
     graph.create(TNode::new(2), &context).await,
-    Ok(vec![T(0, 0), T(1, 0), T(2, 0)])
+    Ok(vec![T::new(0, 0), T::new(1, 0), T::new(2, 0)])
   );
   assert_eq!(context.runs(), vec![TNode::new(0)]);
 
@@ -301,7 +301,7 @@ async fn dirty_dependents_of_uncacheable_node() {
   let context = context.new_session(2).with_salt(1);
   assert_eq!(
     graph.create(TNode::new(2), &context).await,
-    Ok(vec![T(0, 1), T(1, 1), T(2, 1)])
+    Ok(vec![T::new(0, 1), T::new(1, 1), T::new(2, 1)])
   );
   assert_eq!(
     context.runs(),
@@ -310,7 +310,7 @@ async fn dirty_dependents_of_uncacheable_node() {
 }
 
 #[tokio::test]
-async fn uncachable_node_only_runs_once() {
+async fn uncacheable_node_only_runs_once() {
   let _logger = env_logger::try_init();
   let graph = Arc::new(Graph::new());
 
@@ -330,13 +330,52 @@ async fn uncachable_node_only_runs_once() {
   let _join = thread::spawn(move || {
     recv.recv_timeout(Duration::from_millis(100)).unwrap();
     thread::sleep(Duration::from_millis(50));
-    graph2.invalidate_from_roots(|&TNode(n, _)| n == 0);
+    graph2.invalidate_from_roots(|tnode| tnode.id == 0);
   });
 
   send.send(()).unwrap();
   assert_eq!(
     graph.create(TNode::new(2), &context).await,
-    Ok(vec![T(0, 0), T(1, 0), T(2, 0)])
+    Ok(vec![T::new(0, 0), T::new(1, 0), T::new(2, 0)])
+  );
+  assert_eq!(
+    context
+      .runs()
+      .into_iter()
+      .filter(|n| *n == TNode::new(1))
+      .count(),
+    1,
+  );
+}
+
+#[tokio::test]
+async fn uncacheable_item_node_only_runs_once() {
+  let _logger = env_logger::try_init();
+  let graph = Arc::new(Graph::new());
+
+  let context = {
+    let mut item_uncacheable = HashSet::new();
+    item_uncacheable.insert(TNode::new(1));
+    let delay_for_root = Duration::from_millis(1000);
+    let mut delays = HashMap::new();
+    delays.insert(TNode::new(0), delay_for_root);
+    TContext::new(graph.clone())
+      .with_item_uncacheable(item_uncacheable)
+      .with_delays(delays)
+  };
+
+  let graph2 = graph.clone();
+  let (send, recv) = mpsc::channel::<()>();
+  let _join = thread::spawn(move || {
+    recv.recv_timeout(Duration::from_millis(100)).unwrap();
+    thread::sleep(Duration::from_millis(50));
+    graph2.invalidate_from_roots(|tnode| tnode.id == 0);
+  });
+
+  send.send(()).unwrap();
+  assert_eq!(
+    graph.create(TNode::new(2), &context).await,
+    Ok(vec![T::new(0, 0), T::new(1, 0), T::new(2, 0)])
   );
   assert_eq!(
     context
@@ -366,7 +405,7 @@ async fn retries() {
   let graph2 = graph.clone();
   let join_handle = thread::spawn(move || loop {
     thread::sleep(sleep_per_invalidation);
-    graph2.invalidate_from_roots(|&TNode(n, _)| n == 0);
+    graph2.invalidate_from_roots(|&TNode { id, .. }| id == 0);
     if Instant::now() > invalidation_deadline {
       break;
     }
@@ -375,7 +414,7 @@ async fn retries() {
   // Should succeed anyway.
   assert_eq!(
     graph.create(TNode::new(2), &context).await,
-    Ok(vec![T(0, 0), T(1, 0), T(2, 0)])
+    Ok(vec![T::new(0, 0), T::new(1, 0), T::new(2, 0)])
   );
   join_handle.join().unwrap();
 }
@@ -404,12 +443,12 @@ async fn canceled_immediately() {
   let _join = thread::spawn(move || {
     for _ in 0..iterations {
       thread::sleep(sleep_per_invalidation);
-      graph2.invalidate_from_roots(|&TNode(n, _)| n == 1);
+      graph2.invalidate_from_roots(|tnode| tnode.id == 1);
     }
   });
   assert_eq!(
     graph.create(TNode::new(2), &context).await,
-    Ok(vec![T(0, 0), T(1, 0), T(2, 0)])
+    Ok(vec![T::new(0, 0), T::new(1, 0), T::new(2, 0)])
   );
 
   // We should have waited much less than the time it would have taken to complete three times.
@@ -441,7 +480,7 @@ async fn cyclic_dirtying() {
   let context_down = TContext::new(graph.clone());
   assert_eq!(
     graph.create(initial_top.clone(), &context_down).await,
-    Ok(vec![T(0, 0), T(1, 0), T(2, 0)])
+    Ok(vec![T::new(0, 0), T::new(1, 0), T::new(2, 0)])
   );
 
   // Clear the bottom node, and then clean it with a context that causes the path to reverse.
@@ -455,11 +494,11 @@ async fn cyclic_dirtying() {
 
   let res = graph.create(initial_bot, &context_up).await;
 
-  assert_eq!(res, Ok(vec![T(1, 1), T(0, 1)]));
+  assert_eq!(res, Ok(vec![T::new(1, 1), T::new(0, 1)]));
 
   let res = graph.create(initial_top, &context_up).await;
 
-  assert_eq!(res, Ok(vec![T(1, 1), T(2, 1)]));
+  assert_eq!(res, Ok(vec![T::new(1, 1), T::new(2, 1)]));
 }
 
 #[tokio::test]
@@ -485,11 +524,11 @@ async fn cyclic_strong_weak_with_strong_first() {
   let (graph, context) = cyclic_references(vec![TNode::new(1)]);
   assert_eq!(
     graph.create(TNode::new(1), &context).await,
-    Ok(vec![T(0, 0), T(1, 0)])
+    Ok(vec![T::new(0, 0), T::new(1, 0)])
   );
   assert_eq!(
     graph.create(TNode::new(0), &context).await,
-    Ok(vec![T(0, 0), T(1, 0), T(0, 0)])
+    Ok(vec![T::new(0, 0), T::new(1, 0), T::new(0, 0)])
   );
 }
 
@@ -504,11 +543,11 @@ async fn cyclic_strong_weak_with_weak_first() {
   let (graph, context) = cyclic_references(vec![TNode::new(1)]);
   assert_eq!(
     graph.create(TNode::new(0), &context).await,
-    Ok(vec![T(0, 0), T(1, 0), T(0, 0)])
+    Ok(vec![T::new(0, 0), T::new(1, 0), T::new(0, 0)])
   );
   assert_eq!(
     graph.create(TNode::new(1), &context).await,
-    Ok(vec![T(0, 0), T(1, 0)])
+    Ok(vec![T::new(0, 0), T::new(1, 0)])
   );
 }
 
@@ -518,11 +557,11 @@ async fn cyclic_weak_weak() {
   let (graph, context) = cyclic_references(vec![TNode::new(0), TNode::new(1)]);
   assert_eq!(
     graph.create(TNode::new(1), &context).await,
-    Ok(vec![T(0, 0), T(1, 0)])
+    Ok(vec![T::new(0, 0), T::new(1, 0)])
   );
   assert_eq!(
     graph.create(TNode::new(0), &context).await,
-    Ok(vec![T(1, 0), T(0, 0)])
+    Ok(vec![T::new(1, 0), T::new(0, 0)])
   );
 }
 
@@ -579,7 +618,7 @@ async fn critical_path() {
   };
   let node_key = |node: &str| tnode(node);
   let node_entry = |node: &str| Entry::new(node_key(node));
-  let node_and_duration_from_entry = |entry: &super::entry::Entry<TNode>| nodes[entry.node().0];
+  let node_and_duration_from_entry = |entry: &super::entry::Entry<TNode>| nodes[entry.node().id];
   let node_duration =
     |entry: &super::entry::Entry<TNode>| Duration::from_secs(node_and_duration_from_entry(entry).1);
 
@@ -646,26 +685,41 @@ async fn critical_path() {
 #[derive(Clone, Debug, Eq, PartialEq)]
 struct T(usize, usize);
 
+impl T {
+  fn new(node_id: usize, context_id: usize) -> T {
+    T(node_id, context_id)
+  }
+}
+
 ///
 /// A node that builds a Vec of tokens by recursively requesting itself and appending its value
 /// to the result.
 ///
 #[derive(Clone, Debug)]
-struct TNode(usize, bool /*cacheability*/);
+struct TNode {
+  id: usize,
+  cacheability: bool,
+  item_cacheability: bool,
+}
+
 impl TNode {
   fn new(id: usize) -> Self {
-    TNode(id, true)
+    TNode {
+      id,
+      cacheability: true,
+      item_cacheability: true,
+    }
   }
 }
 impl PartialEq for TNode {
   fn eq(&self, other: &Self) -> bool {
-    self.0 == other.0
+    self.id == other.id
   }
 }
 impl Eq for TNode {}
 impl Hash for TNode {
   fn hash<H: Hasher>(&self, state: &mut H) {
-    self.0.hash(state);
+    self.id.hash(state);
   }
 }
 #[async_trait]
@@ -677,7 +731,7 @@ impl Node for TNode {
   async fn run(self, context: TContext) -> Result<Vec<T>, TError> {
     let mut abort_guard = context.abort_guard(self.clone());
     context.ran(self.clone());
-    let token = T(self.0, context.salt());
+    let token = T::new(self.id, context.salt());
     context.maybe_delay(&self).await;
     let res = if let Some(dep) = context.dependency_of(&self) {
       let mut v = context.get(dep).await?;
@@ -691,7 +745,11 @@ impl Node for TNode {
   }
 
   fn cacheable(&self) -> bool {
-    self.1
+    self.cacheability
+  }
+
+  fn cacheable_item(&self, _item: &Vec<T>) -> bool {
+    self.item_cacheability
   }
 }
 
@@ -767,6 +825,7 @@ struct TContext {
   edges: Arc<HashMap<TNode, Option<TNode>>>,
   delays: Arc<HashMap<TNode, Duration>>,
   uncacheable: Arc<HashSet<TNode>>,
+  item_uncacheable: Arc<HashSet<TNode>>,
   graph: Arc<Graph<TNode>>,
   aborts: Arc<Mutex<Vec<TNode>>>,
   runs: Arc<Mutex<Vec<TNode>>>,
@@ -784,6 +843,7 @@ impl NodeContext for TContext {
       edges: self.edges.clone(),
       delays: self.delays.clone(),
       uncacheable: self.uncacheable.clone(),
+      item_uncacheable: self.item_uncacheable.clone(),
       graph: self.graph.clone(),
       aborts: self.aborts.clone(),
       runs: self.runs.clone(),
@@ -821,6 +881,7 @@ impl TContext {
       edges: Arc::default(),
       delays: Arc::default(),
       uncacheable: Arc::default(),
+      item_uncacheable: Arc::default(),
       graph,
       aborts: Arc::default(),
       runs: Arc::default(),
@@ -845,6 +906,11 @@ impl TContext {
 
   fn with_uncacheable(mut self, uncacheable: HashSet<TNode>) -> TContext {
     self.uncacheable = Arc::new(uncacheable);
+    self
+  }
+
+  fn with_item_uncacheable(mut self, item_uncacheable: HashSet<TNode>) -> TContext {
+    self.item_uncacheable = Arc::new(item_uncacheable);
     self
   }
 
@@ -910,12 +976,16 @@ impl TContext {
     match self.edges.get(node) {
       Some(Some(ref dep)) => Some(dep.clone()),
       Some(None) => None,
-      None if node.0 > 0 => {
-        let new_node_id = node.0 - 1;
-        Some(TNode(
-          new_node_id,
-          !self.uncacheable.contains(&TNode::new(new_node_id)),
-        ))
+      None if node.id > 0 => {
+        let new_node_id = node.id - 1;
+        let tnode = TNode::new(new_node_id);
+        let cacheability = !self.uncacheable.contains(&tnode);
+        let item_cacheability = !self.item_uncacheable.contains(&tnode);
+        Some(TNode {
+          id: new_node_id,
+          cacheability,
+          item_cacheability,
+        })
       }
       None => None,
     }
