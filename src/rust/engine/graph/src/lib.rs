@@ -644,10 +644,12 @@ impl<N: Node> Graph<N> {
 
         // We can retry the dst Node if the src Node is not cacheable. If the src is not cacheable,
         // it only be allowed to run once, and so Node invalidation does not pass through it.
-        !inner.entry_for_id(src_id).unwrap().node().cacheable()
+        let src_entry = inner.entry_for_id(src_id).unwrap();
+        info!("Src entry: {:?}", src_entry.node());
+        !src_entry.node().cacheable()
       } else {
         // Otherwise, this is an external request: always retry.
-        trace!(
+        debug!(
           "Requesting node {:?}",
           inner.entry_for_id(dst_id).unwrap().node()
         );
@@ -659,11 +661,15 @@ impl<N: Node> Graph<N> {
     };
 
     // Return the state of the destination.
+    info!("dst_retry: {} for entry {:?} w/ entry_id {:?}", dst_retry, entry.node(), entry_id);
     if dst_retry {
       // Retry the dst a number of times to handle Node invalidation.
       let context = context.clone();
       loop {
-        match entry.get(&context, entry_id).await {
+        let gotten_entry = entry.get(&context, entry_id).await;
+        debug!("Gotten entry: {:?} w/ entry_id: {:?}", gotten_entry, entry_id);
+        
+        match gotten_entry {
           Ok(r) => break Ok(Some(r)),
           Err(err) if err == N::Error::invalidated() => {
             let node = {

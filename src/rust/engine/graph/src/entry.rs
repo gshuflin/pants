@@ -681,7 +681,7 @@ impl<N: Node> Entry<N> {
   ///
   pub(crate) fn dirty(&mut self, _graph: &mut super::InnerGraph<N>) {
     let state = &mut *self.state.lock();
-    trace!("Dirtying node {:?}", self.node);
+    log::debug!("Dirtying node {:?}", self.node);
     match state {
       &mut EntryState::Completed {
         ref mut result,
