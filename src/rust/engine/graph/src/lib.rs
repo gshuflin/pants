@@ -33,7 +33,7 @@ pub mod entry;
 mod node;
 
 use crate::entry::Generation;
-pub use crate::entry::{Entry, EntryResult, RunToken};
+pub use crate::entry::{Entry, EntryResult, RunToken, EntryState};
 
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::fs::File;
@@ -801,7 +801,12 @@ impl<N: Node> Graph<N> {
               .entry_for_id(edge_ref.target())
               .unwrap_or_else(|| panic!("Dependency not present in Graph."))
               .clone();
-            Some((edge_ref.weight().0, entry.node().clone()))
+
+            let state = entry.state.lock();
+            match *state {
+              EntryState::Completed { ref result, .. } if !entry.cacheable_with_output(Some(result.as_ref())) => None,
+              _ => Some((edge_ref.weight().0, entry.node().clone()))
+            }
           } else {
             None
           }
