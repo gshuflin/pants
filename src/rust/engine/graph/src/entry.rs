@@ -440,6 +440,9 @@ impl<N: Node> Entry<N> {
           //
           // On the other hand, if the Node is uncacheable, we store the previous result as
           // Uncacheable, which allows its value to be used only within the current Run.
+          if self.node.node_i_want() {
+            log::info!("About to call spawn_node_execution, result: {:?}", result);
+          }
           Self::spawn_node_execution(
             context,
             &self.node,

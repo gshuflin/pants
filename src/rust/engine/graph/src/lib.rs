@@ -637,6 +637,12 @@ impl<N: Node> Graph<N> {
 
         // We can retry the dst Node if the src Node is not cacheable. If the src is not cacheable,
         // it only be allowed to run once, and so Node invalidation does not pass through it.
+        let entry = inner.entry_for_id(src_id).unwrap();
+        let node = entry.node();
+        if node.node_i_want() {
+          log::warn!("Entry for NODE I WANT: {:?}", entry);
+        }
+
         !inner.entry_for_id(src_id).unwrap().node().cacheable()
       } else {
         // Otherwise, this is an external request: always retry.
@@ -784,7 +790,7 @@ impl<N: Node> Graph<N> {
     run_token: RunToken,
     context: &N::Context,
   ) -> Result<Vec<Generation>, N::Error> {
-    let dep_nodes = {
+    let dep_nodes: Vec<(EdgeType, N)> = {
       let inner = self.inner.lock();
       inner
         .pg
