@@ -84,10 +84,8 @@ pub struct InvalidationResult {
   pub dirtied: usize,
 }
 
-type Nodes<N> = HashMap<N, EntryId>;
-
 struct InnerGraph<N: Node> {
-  nodes: Nodes<N>,
+  nodes: HashMap<N, EntryId>,
   pg: PGraph<N>,
 }
 
@@ -109,17 +107,12 @@ impl<N: Node> InnerGraph<N> {
   }
 
   fn ensure_entry(&mut self, node: N) -> EntryId {
-    InnerGraph::ensure_entry_internal(&mut self.pg, &mut self.nodes, node)
-  }
-
-  fn ensure_entry_internal(pg: &mut PGraph<N>, nodes: &mut Nodes<N>, node: N) -> EntryId {
-    if let Some(&id) = nodes.get(&node) {
+    if let Some(&id) = self.nodes.get(&node) {
       return id;
     }
 
-    // New entry.
-    let id = pg.add_node(Entry::new(node.clone()));
-    nodes.insert(node, id);
+    let id = self.pg.add_node(Entry::new(node.clone()));
+    self.nodes.insert(node, id);
     id
   }
 
@@ -785,7 +778,7 @@ impl<N: Node> Graph<N> {
   /// Gets the generations of the dependencies of the given EntryId at the given RunToken,
   /// (re)computing or cleaning them first if necessary.
   ///
-  async fn dep_generations(
+  async fn compute_dep_generations(
     &self,
     entry_id: EntryId,
     run_token: RunToken,
