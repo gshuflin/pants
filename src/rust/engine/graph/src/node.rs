@@ -29,6 +29,10 @@ pub trait Node: Clone + Debug + Display + Eq + Hash + Send + 'static {
 
   async fn run(self, context: Self::Context) -> Result<Self::Item, Self::Error>;
 
+  fn node_i_want(&self) -> bool {
+    false
+  }
+
   ///
   /// If a node's output is cacheable based solely on properties of the node, and not the output,
   /// return true.

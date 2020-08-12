@@ -336,6 +336,10 @@ impl<N: Node> Entry<N> {
         false
       };
 
+      if node.node_i_want() {
+        log::warn!("was_clean: {} for node: {:?}", was_clean, node);
+      }
+
       // If the Node was clean, complete it. Otherwise, re-run.
       if was_clean {
         // No dependencies have changed: we can complete the Node without changing its

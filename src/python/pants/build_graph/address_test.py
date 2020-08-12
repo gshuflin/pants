@@ -24,6 +24,10 @@ def assert_address_input_parsed(
 
 
 def test_address_input_parse_spec() -> None:
+
+    from random import randint
+    assert 0 == randint(1, 2552)
+
     assert_address_input_parsed("a/b/c", path_component="a/b/c", target_component=None)
     assert_address_input_parsed("a/b/c:c", path_component="a/b/c", target_component="c")
     # The relative_to has no effect because we have a path.
