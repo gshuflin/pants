@@ -33,7 +33,7 @@ pub mod entry;
 mod node;
 
 use crate::entry::Generation;
-pub use crate::entry::{Entry, EntryResult, RunToken};
+pub use crate::entry::{Entry, EntryResult, RunToken, EntryState};
 
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::fs::File;
@@ -663,6 +663,9 @@ impl<N: Node> Graph<N> {
       // Retry the dst a number of times to handle Node invalidation.
       let context = context.clone();
       loop {
+        if entry.node().node_i_want() {
+          log::warn!("Calling .get() location B");
+        }
         match entry.get(&context, entry_id).await {
           Ok(r) => break Ok(Some(r)),
           Err(err) if err == N::Error::invalidated() => {
@@ -682,6 +685,9 @@ impl<N: Node> Graph<N> {
       }
     } else {
       // Not retriable.
+        if entry.node().node_i_want() {
+          log::warn!("Calling .get() location C");
+        }
       Ok(Some(entry.get(context, entry_id).await?))
     }
   }
@@ -696,6 +702,9 @@ impl<N: Node> Graph<N> {
   /// to be retried here for up to `invalidation_timeout`.
   ///
   pub async fn get(&self, context: &N::Context, dst_node: N) -> Result<N::Item, N::Error> {
+    if dst_node.node_i_want() {
+      log::warn!("About to invoke .get_inner() for Node:{:?} WITHIN GET", dst_node);
+    }
     match self.get_inner(context, dst_node, EdgeType::Strong).await {
       Ok(Some((res, _generation))) => Ok(res),
       Err(e) => Err(e),
@@ -724,6 +733,9 @@ impl<N: Node> Graph<N> {
   /// also used by Nodes to request dependencies..
   ///
   pub async fn create(&self, node: N, context: &N::Context) -> Result<N::Item, N::Error> {
+    if node.node_i_want() {
+      log::warn!("Calling .get() location A");
+    }
     let result = self.get(context, node).await;
     // In the background, garbage collect edges.
     // NB: This could safely occur at any frequency: if it ever shows up in profiles, we could make
@@ -802,7 +814,22 @@ impl<N: Node> Graph<N> {
               .entry_for_id(edge_ref.target())
               .unwrap_or_else(|| panic!("Dependency not present in Graph."))
               .clone();
-            Some((edge_ref.weight().0, entry.node().clone()))
+
+            if entry.has_uncacheable_item() {
+              None
+            } else {
+              Some((edge_ref.weight().0, entry.node().clone()))
+            }
+              /*
+            let state = entry.state.lock();
+            match *state {
+              EntryState::Completed { ref result, .. } if !entry.cacheable_with_output(Some(result.as_ref())) => {
+                log::warn!("Hitting the cacheable with output check for node: {:?}", entry.node());
+                None
+              },
+              _ => Some((edge_ref.weight().0, entry.node().clone()))
+            }
+              */
           } else {
             None
           }
@@ -812,6 +839,9 @@ impl<N: Node> Graph<N> {
     let generations = dep_nodes
       .into_iter()
       .map(|(edge_type, node)| async move {
+        if node.node_i_want() {
+          log::warn!("About to invoke .get_inner() for Node:{:?}", node);
+        }
         Ok(
           self
             .get_inner(context, node, edge_type)

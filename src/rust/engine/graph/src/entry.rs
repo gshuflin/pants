@@ -226,17 +226,25 @@ impl<N: Node> Entry<N> {
     }
   }
 
+  pub(crate) fn has_uncacheable_item(&self) -> bool {
+    let state = self.state.lock();
+    match *state {
+      EntryState::Completed { result: EntryResult::Uncacheable(..), .. } => true,
+      _ => false
+    }
+  }
+
+
   pub fn node(&self) -> &N {
     &self.node
   }
 
-  pub(crate) fn cacheable_with_output(&self, _output: Option<&N::Item>) -> bool {
-    /*
+  pub(crate) fn cacheable_with_output(&self, output: Option<&N::Item>) -> bool {
     (if let Some(item) = output {
       self.node.cacheable_item(item)
     } else {
       false
-    }) &&*/ self.node.cacheable()
+    }) && self.node.cacheable()
   }
 
   ///
@@ -384,6 +392,16 @@ impl<N: Node> Entry<N> {
     {
       let mut state = self.state.lock();
 
+      if self.node().node_i_want() {
+        log::warn!("It's too late, we've called get() on node: {:?}", self.node());
+        log::warn!("CURRENT SESSION ID: {:?}", context.session_id());
+
+        if let EntryState::Completed { ref result, generation, .. } = *state {
+          log::error!("And hey the result.is_clean is: ___ {} ___ for node: {:?}", result.is_clean(context), self.node());
+          log::error!("RESULT: {:?} and generation: {:?}", result, generation);
+        }
+      }
+
       // First check whether the Node is already complete, or is currently running: in both of these
       // cases we don't swap the state of the Node.
       match &mut *state {
@@ -405,6 +423,10 @@ impl<N: Node> Entry<N> {
           // Fall through to the second match.
         }
       };
+
+      if self.node().node_i_want() {
+        log::warn!("It's really too late, we are gonna invoke Self::run on node: {:?}", self.node());
+      }
 
       // Otherwise, we'll need to swap the state of the Node, so take it by value.
       let next_state = match mem::replace(&mut *state, EntryState::initial()) {

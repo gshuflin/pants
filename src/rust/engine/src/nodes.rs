@@ -1130,6 +1130,13 @@ impl Node for NodeKey {
   type Item = NodeOutput;
   type Error = Failure;
 
+  fn node_i_want(&self) -> bool {
+    match self {
+      NodeKey::MultiPlatformExecuteProcess(_) => true,
+      _ => false
+    }
+  }
+
   async fn run(self, context: Context) -> Result<NodeOutput, Failure> {
     let workunit_state = workunit_store::expect_workunit_state();
 

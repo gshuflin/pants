@@ -269,6 +269,7 @@ async fn poll_uncacheable() {
 
 #[tokio::test]
 async fn dirty_dependents_of_uncacheable_node() {
+  let _logger = env_logger::try_init();
   let graph = Arc::new(Graph::new());
 
   // Create a context for which the bottommost Node is not cacheable.
