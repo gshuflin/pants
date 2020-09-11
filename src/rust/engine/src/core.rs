@@ -3,6 +3,7 @@
 
 use fnv::FnvHasher;
 
+use std::convert::AsRef;
 use std::ops::Deref;
 use std::sync::Arc;
 use std::{fmt, hash};
@@ -298,6 +299,12 @@ impl From<Value> for PyObject {
 impl From<PyObject> for Value {
   fn from(handle: PyObject) -> Self {
     Value::new(handle)
+  }
+}
+
+impl AsRef<PyObject> for Value {
+  fn as_ref(&self) -> &PyObject {
+    self.0.as_ref()
   }
 }
 
