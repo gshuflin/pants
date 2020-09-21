@@ -168,6 +168,8 @@ class GlobalOptions(Subsystem):
             "--level",
             type=LogLevel,
             default=LogLevel.INFO,
+            deprecation_start_version="1.30.0dev0",
+            removal_version="2.1.0dev0",
             help="Set the logging level. The logging levels are one of: "
             '"error", "warn", "info", "debug", "trace".',
         )
