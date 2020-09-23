@@ -1,6 +1,7 @@
 # Copyright 2014 Pants project contributors (see CONTRIBUTORS.md).
 # Licensed under the Apache License, Version 2.0 (see LICENSE).
 
+import warnings
 import multiprocessing
 import os
 import sys
@@ -163,16 +164,18 @@ class GlobalOptions(Subsystem):
         default_distdir_name = "dist"
         default_rel_distdir = f"/{default_distdir_name}/"
 
-        register(
-            "-l",
-            "--level",
-            type=LogLevel,
-            default=LogLevel.INFO,
-            deprecation_start_version="1.30.0dev0",
-            removal_version="2.1.0dev0",
-            help="Set the logging level. The logging levels are one of: "
-            '"error", "warn", "info", "debug", "trace".',
-        )
+        print("About to call register")
+        with warnings.catch_warnings(record=False):
+            register(
+                "-l",
+                "--level",
+                type=LogLevel,
+                default=LogLevel.INFO,
+                deprecation_start_version="1.30.0dev0",
+                removal_version="2.1.0dev0",
+                help="Set the logging level. The logging levels are one of: "
+                '"error", "warn", "info", "debug", "trace".',
+            )
         register(
             "--show-log-target",
             type=bool,
