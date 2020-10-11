@@ -167,7 +167,7 @@ pub fn store_bool(val: bool) -> Value {
 ///
 /// Check if a Python object has the specified field.
 ///
-pub fn hasattr(value: &Value, field: &str) -> bool {
+pub fn hasattr(value: &PyObject, field: &str) -> bool {
   let gil = Python::acquire_gil();
   let py = gil.python();
   value.hasattr(py, field).unwrap()
@@ -176,13 +176,13 @@ pub fn hasattr(value: &Value, field: &str) -> bool {
 ///
 /// Gets an attribute of the given value as the given type.
 ///
-fn getattr<T>(value: &PyObject, field: &str) -> Result<T, String>
+fn getattr<T>(py_object: &PyObject, field: &str) -> Result<T, String>
 where
   for<'a> T: FromPyObject<'a>,
 {
   let gil = Python::acquire_gil();
   let py = gil.python();
-  value
+  py_object
     .getattr(py, field)
     .map_err(|e| format!("Could not get field `{}`: {:?}", field, e))?
     .extract::<T>(py)
