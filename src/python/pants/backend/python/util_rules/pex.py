@@ -187,14 +187,21 @@ class PexInterpreterConstraints(FrozenOrderedSet[Requirement], EngineAwareParame
     def group_field_sets_by_constraints(
         cls, field_sets: Iterable[_FS], python_setup: PythonSetup
     ) -> FrozenDict["PexInterpreterConstraints", Tuple[_FS, ...]]:
+        logging.warning(f"Field sets: {len(field_sets)}")
+
+        def key_fn(fs: _FS) -> "PexInterpreterConstraints":
+            return cls.create_from_compatibility_fields([fs.compatibility], python_setup)
+
+        sorted_field_sets = list(sorted(field_sets, key=lambda x: x.address))
+        for item in sorted_field_sets[0:10]:
+            logging.info(item)
+        grouped = itertools.groupby(sorted_field_sets, key=key_fn)
+        grouped_field_sets = [(k, list(g)) for k, g in grouped]
+        logging.warning(f"Len of grouped field sets: {len(grouped_field_sets)}")
+
         constraints_to_field_sets = {
             constraints: tuple(sorted(fs_collection, key=lambda fs: fs.address))
-            for constraints, fs_collection in itertools.groupby(
-                field_sets,
-                key=lambda fs: cls.create_from_compatibility_fields(
-                    [fs.compatibility], python_setup
-                ),
-            )
+            for constraints, fs_collection in grouped_field_sets
         }
         return FrozenDict(sorted(constraints_to_field_sets.items()))
 

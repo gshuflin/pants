@@ -26,6 +26,9 @@ from pants.python.python_setup import PythonSetup
 from pants.util.logging import LogLevel
 from pants.util.strutil import pluralize
 
+import logging
+logger = logging.getLogger(__name__)
+
 
 @dataclass(frozen=True)
 class Flake8FieldSet(FieldSet):
@@ -147,6 +150,12 @@ async def flake8_lint(
     constraints_to_field_sets = PexInterpreterConstraints.group_field_sets_by_constraints(
         request.field_sets, python_setup
     )
+
+    for item in constraints_to_field_sets:
+        constraint = item
+        field_set  = constraints_to_field_sets[item]
+        logging.info(f"Constraint: {constraint} and len field set: {len(field_set)}")
+
     partitioned_results = await MultiGet(
         Get(LintResult, Flake8Partition(partition_field_sets, partition_compatibility))
         for partition_compatibility, partition_field_sets in constraints_to_field_sets.items()
