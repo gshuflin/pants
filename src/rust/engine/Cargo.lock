@@ -59,7 +59,8 @@ version = "0.0.1"
 dependencies = [
  "futures 0.3.5",
  "parking_lot",
- "tokio",
+ "tokio 0.2.22",
+ "tokio 0.3.0",
 ]
 
 [[package]]
@@ -222,7 +223,7 @@ dependencies = [
  "tempfile",
  "testutil",
  "time",
- "tokio",
+ "tokio 0.2.22",
  "workunit_store",
 ]
 
@@ -722,7 +723,7 @@ dependencies = [
  "tempfile",
  "testutil",
  "time",
- "tokio",
+ "tokio 0.2.22",
  "ui",
  "url",
  "uuid 0.7.4",
@@ -827,7 +828,7 @@ dependencies = [
  "task_executor",
  "tempfile",
  "testutil",
- "tokio",
+ "tokio 0.2.22",
 ]
 
 [[package]]
@@ -850,7 +851,7 @@ dependencies = [
  "serde_json",
  "store",
  "task_executor",
- "tokio",
+ "tokio 0.2.22",
  "workunit_store",
 ]
 
@@ -1074,7 +1075,7 @@ dependencies = [
  "parking_lot",
  "petgraph",
  "rand 0.6.5",
- "tokio",
+ "tokio 0.2.22",
 ]
 
 [[package]]
@@ -1146,7 +1147,7 @@ dependencies = [
  "indexmap",
  "log 0.4.8",
  "slab",
- "tokio",
+ "tokio 0.2.22",
  "tokio-util",
 ]
 
@@ -1253,7 +1254,7 @@ dependencies = [
  "net2",
  "pin-project",
  "time",
- "tokio",
+ "tokio 0.2.22",
  "tower-service 0.3.0",
  "want",
 ]
@@ -1271,7 +1272,7 @@ dependencies = [
  "log 0.4.8",
  "rustls",
  "rustls-native-certs",
- "tokio",
+ "tokio 0.2.22",
  "tokio-rustls",
  "webpki",
 ]
@@ -1531,7 +1532,7 @@ dependencies = [
  "log 0.4.8",
  "num_enum",
  "parking_lot",
- "tokio",
+ "tokio 0.2.22",
  "uuid 0.7.4",
 ]
 
@@ -1682,7 +1683,7 @@ dependencies = [
  "parking_lot",
  "protobuf",
  "testutil",
- "tokio",
+ "tokio 0.2.22",
 ]
 
 [[package]]
@@ -1701,7 +1702,7 @@ dependencies = [
  "nails",
  "os_pipe",
  "task_executor",
- "tokio",
+ "tokio 0.2.22",
 ]
 
 [[package]]
@@ -1714,7 +1715,7 @@ dependencies = [
  "bytes 0.5.4",
  "futures 0.3.5",
  "log 0.4.8",
- "tokio",
+ "tokio 0.2.22",
  "tokio-util",
 ]
 
@@ -2128,7 +2129,7 @@ dependencies = [
  "task_executor",
  "tempfile",
  "testutil",
- "tokio",
+ "tokio 0.2.22",
  "tokio-util",
  "uname",
  "walkdir 2.3.1",
@@ -2149,7 +2150,7 @@ dependencies = [
  "process_execution",
  "store",
  "task_executor",
- "tokio",
+ "tokio 0.2.22",
  "workunit_store",
 ]
 
@@ -2562,7 +2563,7 @@ dependencies = [
  "serde",
  "serde_urlencoded",
  "time",
- "tokio",
+ "tokio 0.2.22",
  "tokio-rustls",
  "url",
  "wasm-bindgen",
@@ -2810,7 +2811,7 @@ dependencies = [
  "maplit",
  "parking_lot",
  "testutil",
- "tokio",
+ "tokio 0.2.22",
 ]
 
 [[package]]
@@ -2941,7 +2942,7 @@ dependencies = [
  "task_executor",
  "tempfile",
  "testutil",
- "tokio",
+ "tokio 0.2.22",
  "uuid 0.7.4",
  "walkdir 2.3.1",
  "workunit_store",
@@ -3036,7 +3037,7 @@ dependencies = [
  "futures 0.3.5",
  "logging",
  "num_cpus",
- "tokio",
+ "tokio 0.2.22",
  "workunit_store",
 ]
 
@@ -3158,8 +3159,20 @@ dependencies = [
  "pin-project-lite",
  "signal-hook-registry",
  "slab",
- "tokio-macros",
+ "tokio-macros 0.2.5",
  "winapi 0.3.8",
+]
+
+[[package]]
+name = "tokio"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7137dbb0abee577362ccdc7df21605cfcbb949243aeab47dac9ea6ef7d830e21"
+dependencies = [
+ "bytes 0.5.4",
+ "pin-project-lite",
+ "slab",
+ "tokio-macros 0.3.0",
 ]
 
 [[package]]
@@ -3194,6 +3207,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "tokio-macros"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d48caa7b66c7a6ec943edf78d21a594fbeb24e536c781da67d5c32edec54103f"
+dependencies = [
+ "proc-macro2 1.0.12",
+ "quote 1.0.4",
+ "syn 1.0.18",
+]
+
+[[package]]
 name = "tokio-rustls"
 version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3201,7 +3225,7 @@ checksum = "4adb8b3e5f86b707f1b54e7c15b6de52617a823608ccda98a15d3a24222f265a"
 dependencies = [
  "futures-core",
  "rustls",
- "tokio",
+ "tokio 0.2.22",
  "webpki",
 ]
 
@@ -3216,7 +3240,7 @@ dependencies = [
  "futures-sink",
  "log 0.4.8",
  "pin-project-lite",
- "tokio",
+ "tokio 0.2.22",
 ]
 
 [[package]]
@@ -3600,7 +3624,7 @@ dependencies = [
  "task_executor",
  "tempfile",
  "testutil",
- "tokio",
+ "tokio 0.2.22",
 ]
 
 [[package]]
@@ -3704,7 +3728,7 @@ dependencies = [
  "parking_lot",
  "petgraph",
  "rand 0.6.5",
- "tokio",
+ "tokio 0.2.22",
 ]
 
 [[package]]

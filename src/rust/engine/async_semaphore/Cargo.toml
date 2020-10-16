@@ -11,4 +11,4 @@ tokio = { version = "0.2.22", features = ["sync"] }
 
 [dev-dependencies]
 futures = "0.3"
-tokio = { version = "0.2.22", features = ["rt-core", "macros", "time"] }
+tokio = { version = "0.3.0", features = ["rt", "macros", "time"] }
