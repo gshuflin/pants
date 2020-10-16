@@ -16,11 +16,8 @@ class PantsLoader:
 
     ENCODING_IGNORE_ENV_VAR = "PANTS_IGNORE_UNRECOGNIZED_ENCODING"
 
-    class InvalidLocaleError(Exception):
-        """Raised when a valid locale can't be found."""
-
     @staticmethod
-    def setup_warnings():
+    def setup_warnings() -> None:
         # We want to present warnings to the user, set this up before importing any of our own code,
         # to ensure all deprecation warnings are seen, including module deprecations.
         # The "default" action displays a warning for a particular file and line number exactly once.
@@ -40,7 +37,7 @@ class PantsLoader:
         )
 
     @classmethod
-    def ensure_locale(cls):
+    def ensure_locale(cls) -> None:
         # Sanity check for locale, See https://github.com/pantsbuild/pants/issues/2465.
         # This check is done early to give good feedback to user on how to fix the problem. Other
         # libraries called by Pants may fail with more obscure errors.
@@ -49,7 +46,7 @@ class PantsLoader:
             encoding.lower() != "utf-8"
             and os.environ.get(cls.ENCODING_IGNORE_ENV_VAR, None) is None
         ):
-            raise cls.InvalidLocaleError(
+            raise locale.Error(
                 dedent(
                     """
                     Your system's preferred encoding is `{}`, but Pants requires `UTF-8`.
@@ -67,12 +64,12 @@ class PantsLoader:
                 )
             )
 
-    @staticmethod
-    def determine_entrypoint(env_var, default):
-        return os.environ.pop(env_var, default)
+    @classmethod
+    def determine_entrypoint(cls, env_var: str) -> str:
+        return os.environ.pop(env_var, cls.DEFAULT_ENTRYPOINT)
 
     @staticmethod
-    def load_and_execute(entrypoint):
+    def load_and_execute(entrypoint: str):
         assert ":" in entrypoint, "ERROR: entrypoint must be of the form `module.path:callable`"
         module_path, func_name = entrypoint.split(":", 1)
         module = importlib.import_module(module_path)
@@ -86,7 +83,7 @@ class PantsLoader:
     def run(cls):
         cls.setup_warnings()
         cls.ensure_locale()
-        entrypoint = cls.determine_entrypoint(cls.ENTRYPOINT_ENV_VAR, cls.DEFAULT_ENTRYPOINT)
+        entrypoint = cls.determine_entrypoint(cls.ENTRYPOINT_ENV_VAR)
         cls.load_and_execute(entrypoint)
 
 
