@@ -51,13 +51,16 @@ class SignalHandler:
 
     def _handle_sigint_if_enabled(self, signum: int, _frame):
         with self._ignore_sigint_lock:
-            if not self._ignoring_sigint:
-                self.handle_sigint(signum, _frame)
+            if self._pantsd_instance:
+                if self._ignoring_sigint:
+                    self._send_signal_to_children(int(signal.SIGINT), "SIGINT")
+            else:
+                if not self._ignoring_sigint:
+                    self.handle_sigint(signum, _frame)
 
     def _toggle_ignoring_sigint(self, toggle: bool) -> None:
-        if not self._pantsd_instance:
-            with self._ignore_sigint_lock:
-                self._ignoring_sigint = toggle
+        with self._ignore_sigint_lock:
+            self._ignoring_sigint = toggle
 
     def _send_signal_to_children(self, received_signal: int, signame: str) -> None:
         """Send a signal to any children of this process in order.
