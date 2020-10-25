@@ -57,7 +57,6 @@ class RunTracker(Subsystem):
     DEFAULT_ROOT_NAME = "main"
 
     # The name of the tracking root for the background worker threads.
-    BACKGROUND_ROOT_NAME = "background"
     SUPPORTED_STATS_VERSIONS = [1, 2]
 
     @classmethod
@@ -105,15 +104,6 @@ class RunTracker(Subsystem):
             removal_hint="RunTracker no longer uses foreground workers.",
             default=multiprocessing.cpu_count(),
             help="Number of threads for foreground work.",
-        )
-        register(
-            "--num-background-workers",
-            advanced=True,
-            type=int,
-            removal_version="2.1.0.dev0",
-            removal_hint="RunTracker no longer uses background workers.",
-            default=multiprocessing.cpu_count(),
-            help="Number of threads for background work.",
         )
         register(
             "--stats-local-json-file",
@@ -168,9 +158,6 @@ class RunTracker(Subsystem):
 
         # Number of threads for foreground work.
         self._num_foreground_workers = self.options.num_foreground_workers
-
-        # Number of threads for background work.
-        self._num_background_workers = self.options.num_background_workers
 
         # self._threadlocal.current_workunit contains the current workunit for the calling thread.
         # Note that multiple threads may share a name (e.g., all the threads in a pool).
