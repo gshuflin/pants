@@ -64,27 +64,6 @@ class RunTracker(Subsystem):
     @classmethod
     def register_options(cls, register):
         register(
-            "--stats-upload-urls",
-            advanced=True,
-            type=dict,
-            default={},
-            removal_version="2.1.0.dev0",
-            removal_hint="RunTracker no longer directly supports uploading run stats to urls.",
-            help="Upload stats to these URLs on run completion.  Value is a map from URL to the "
-            "name of the auth provider the user must auth against in order to upload stats "
-            "to that URL, or None/empty string if no auth is required.  Currently the "
-            "auth provider name is only used to provide a more helpful error message.",
-        )
-        register(
-            "--stats-upload-timeout",
-            advanced=True,
-            type=int,
-            removal_version="2.1.0.dev0",
-            removal_hint="RunTracker no longer directly supports uploading run stats to urls.",
-            default=2,
-            help="Wait at most this many seconds for the stats upload to complete.",
-        )
-        register(
             "--stats-version",
             advanced=True,
             type=int,
@@ -367,18 +346,6 @@ class RunTracker(Subsystem):
         stats_json_file_name = self.options.stats_local_json_file
         if stats_json_file_name:
             self.write_stats_to_json(stats_json_file_name, stats)
-
-        # Upload to remote stats db.
-        stats_upload_urls = copy.copy(self.options.stats_upload_urls)
-        timeout = self.options.stats_upload_timeout
-        for stats_url, auth_provider in stats_upload_urls.items():
-            self.post_stats(
-                stats_url,
-                stats,
-                timeout=timeout,
-                auth_provider=auth_provider,
-                stats_version=self._stats_version,
-            )
 
     def has_ended(self) -> bool:
         return self._end_memoized_result is not None
